@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.itwela.schoolkompass"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,6 +37,10 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "REPLICATE_API_TOKEN_1": "r8_ai4ppQD2FogRc23tuz",
+      "REPLICATE_API_TOKEN_2": "aTRw7dptK68VW4gY3lK"
     }
   }
 }
