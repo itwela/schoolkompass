@@ -18,7 +18,6 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
-        // tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
@@ -27,6 +26,7 @@ export default function TabLayout() {
             borderRadius: 15,
             height: 70,
             display: currentStudyGuide ? 'none' : 'flex',
+            backgroundColor: '#FFFFFF',
             shadowColor: '#000',
             shadowOffset: {
               width: 0,
@@ -46,6 +46,7 @@ export default function TabLayout() {
             borderRadius: 15,
             height: 70,
             display: currentStudyGuide ? 'none' : 'flex',
+            backgroundColor: '#FFFFFF',
             marginHorizontal: 20,
             width: '90%',
             alignSelf: 'center',
@@ -59,13 +60,13 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen
         name="(class)"
-        
         options={{
           title: 'Study',
           tabBarStyle: {
             paddingTop: 12,
+            backgroundColor: '#fff'
           },
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={"#007AFF"} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color="#007AFF" />
         }}
       />
     </Tabs>
