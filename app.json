@@ -5,12 +5,20 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "schoolkompass",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "permissions": [
+      "audioRecording"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.itwela.schoolkompass"
+      "bundleIdentifier": "com.itwela.schoolkompass",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,6 +41,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
       ]
     ],
     "experiments": {
@@ -40,7 +54,10 @@
     },
     "extra": {
       "REPLICATE_API_TOKEN_1": "r8_ai4ppQD2FogRc23tuz",
-      "REPLICATE_API_TOKEN_2": "aTRw7dptK68VW4gY3lK"
+      "REPLICATE_API_TOKEN_2": "aTRw7dptK68VW4gY3lK",
+      "eas": {
+        "projectId": "92a0f2b7-71e4-44db-8c37-87d956476858"
+      }
     }
   }
 }

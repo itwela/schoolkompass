@@ -2,12 +2,15 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
+// NWSEC Study Guide 1 - D315 
+
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useClass } from '@/contexts/ClassContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -26,7 +29,7 @@ export default function TabLayout() {
             borderRadius: 15,
             height: 70,
             display: currentStudyGuide ? 'none' : 'flex',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: useThemeColor({}, 'background'),
             shadowColor: '#000',
             shadowOffset: {
               width: 0,
@@ -46,7 +49,7 @@ export default function TabLayout() {
             borderRadius: 15,
             height: 70,
             display: currentStudyGuide ? 'none' : 'flex',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: useThemeColor({}, 'background'),
             marginHorizontal: 20,
             width: '90%',
             alignSelf: 'center',
@@ -57,16 +60,19 @@ export default function TabLayout() {
         }),
         tabBarInactiveTintColor: '#4A4A4A',
         tabBarActiveTintColor: '#4A4A4A',
-      }}>
+      }}
+      >
       <Tabs.Screen
+      
         name="(class)"
         options={{
           title: 'Study',
+          
           tabBarStyle: {
             paddingTop: 12,
-            backgroundColor: '#fff'
+            backgroundColor: useThemeColor({}, 'background'),
           },
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color="#007AFF" />
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={useThemeColor({}, 'tint')} />
         }}
       />
     </Tabs>

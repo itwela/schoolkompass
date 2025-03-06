@@ -7,12 +7,30 @@ interface Class {
   description: string;
 }
 
+interface WhisperTimestamp {
+  start: number;
+  end: number;
+  text: string;
+}
+
+interface Quiz {
+  id: string;
+  question: string;
+  answer: string;
+}
+
 interface StudyGuide {
   id: string;
   title: string;
   text: string;
   audioFile?: string;
-  timestamps?: string[];
+  timestamps?: WhisperTimestamp[];
+  lastModified: string;
+}
+interface Quizzes {
+  id: string;
+  title: string;
+  quizContent: Quiz[];
   lastModified: string;
 }
 
@@ -139,6 +157,10 @@ export const useStudyGuidesLocal = (classId: string) => {
       guidesObj[classId] = [...classGuides, newGuide];
       await AsyncStorage.setItem('studyGuides', JSON.stringify(guidesObj));
       setStudyGuides(guidesObj[classId]);
+
+      console.log("guidesObj", guidesObj[classId])
+      console.log('success')
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add study guide');
     }
@@ -165,4 +187,73 @@ export const useStudyGuidesLocal = (classId: string) => {
   }, [classId]);
 
   return { studyGuides, loading, error, addStudyGuide, deleteStudyGuide };
+};
+
+export const useQuizzesLocal = (classId: string) => {
+  const [quizzes, setQuizzes] = useState<Quizzes[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchQuizzes = async () => {
+    try {
+      const storedQuizzes = await AsyncStorage.getItem('quizzes');
+      let quizzesToSet;
+      if (storedQuizzes) {
+        const quizzesObj = JSON.parse(storedQuizzes);
+        quizzesToSet = quizzesObj[classId] || [];
+        if (quizzesToSet.length === 0 && quizzes[classId as keyof typeof quizzes]) {
+          quizzesToSet = quizzes[classId as keyof typeof quizzes];
+          const updatedQuizzesObj = { ...quizzesObj, [classId]: quizzesToSet };
+          await AsyncStorage.setItem('quizzes', JSON.stringify(updatedQuizzesObj));
+        }
+      } else {
+        quizzesToSet = quizzes[classId as keyof typeof quizzes] || [];
+        await AsyncStorage.setItem('quizzes', JSON.stringify({ [classId]: quizzesToSet }));
+      }
+      setQuizzes(quizzesToSet);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch quizzes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addQuiz = async (newQuiz: StudyGuide) => {
+    try {
+      const storedQuizzes = await AsyncStorage.getItem('quizzes');
+      const quizObj = storedQuizzes ? JSON.parse(storedQuizzes) : {};
+      const quizGuides = quizObj[classId] || [];
+      quizObj[classId] = [...quizGuides, newQuiz];
+      await AsyncStorage.setItem('quizzes', JSON.stringify(quizObj));
+      setQuizzes(quizObj[classId]);
+
+      console.log("quizObj", quizObj[classId])
+      console.log('success')
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add quiz');
+    }
+  };
+
+  const deleteQuiz = async (quizId: string) => {
+    try {
+      const storedQuizzes = await AsyncStorage.getItem('quizzes');
+      if (storedQuizzes) {
+        const quizObj = JSON.parse(storedQuizzes);
+        quizObj[classId] = quizObj[classId].filter(
+          (guide: StudyGuide) => guide.id !== quizObj
+        );
+        await AsyncStorage.setItem('quizzes', JSON.stringify(quizObj));
+        setQuizzes(quizObj[classId]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete quiz');
+    }
+  };
+
+  useEffect(() => {
+    fetchQuizzes();
+  }, [classId]);
+
+  return { quizzes, loading, error, addQuiz, deleteQuiz };
 };

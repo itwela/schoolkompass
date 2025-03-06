@@ -1,5 +1,3 @@
-
-
 import Replicate from "replicate";
 import Constants from 'expo-constants';
 

@@ -13,6 +13,7 @@ interface WhisperTimestamp {
   start: number;
   end: number;
   text: string;
+  makeNoteOfThis?: boolean;
 }
 
 type StudyGuide = {
@@ -23,6 +24,17 @@ type StudyGuide = {
   audioFile: any;
   lastModified: string;
 };
+
+interface Quiz {
+  id: string;
+  question: string;
+  answer: string;
+}
+interface Quizzes {
+  id: string;
+  title: string;
+  quizContent: Quiz[];
+}
 
 type ClassContextType = {
   classes: Class[];  // Changed from any[] to Class[]
@@ -36,8 +48,13 @@ type ClassContextType = {
   setStudyGuides: (guides: StudyGuide[]) => void;
   currentStudyGuide: StudyGuide | null;
   setCurrentStudyGuide: (guide: StudyGuide | null) => void;
+  currentQuiz: Quizzes | null;
+  setCurrentQuiz: (quiz: Quizzes | null) => void;
   currentClassName: string | null;
   setCurrentClassName: (name: string | null) => void;
+
+  markedSegments: any;
+  setMarkedSegments: (segments: any) => void;
 };
 
 export const mockStudyGuides = {
@@ -62,9 +79,11 @@ export function ClassProvider({ children }: { children: ReactNode }) {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [studyGuides, setStudyGuides] = useState<StudyGuide[]>([]);
   const [currentStudyGuide, setCurrentStudyGuide] = useState<StudyGuide | null>(null);
+  const [currentQuiz, setCurrentQuiz] = useState<Quizzes | null>(null);
   const [currentClassName, setCurrentClassName] = useState<string | null>(null);
   const { classes = [] as Class[], loading: classesLoading, error: classesError } = useClassesLocal()
   const classArray = Array.isArray(classes) ? classes : Array.from(classes as Set<Class>);
+  const [markedSegments, setMarkedSegments] = useState<Set<string>>(new Set());
 
   useEffect(() => {
 
@@ -88,8 +107,12 @@ export function ClassProvider({ children }: { children: ReactNode }) {
         setStudyGuides,
         currentStudyGuide,
         setCurrentStudyGuide,
+        currentQuiz,
+        setCurrentQuiz,
         currentClassName,
-        setCurrentClassName
+        setCurrentClassName,
+        markedSegments,
+        setMarkedSegments,
       }}>
       {children}
     </ClassContext.Provider>

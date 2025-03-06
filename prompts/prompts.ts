@@ -1,26 +1,15 @@
-export const markdownScriptEnhancerPrompt = [
+export const genTextForGuide = [
     `
-Please enhance this text for natural AI narration:
+Your task is to enhance the following text for **natural AI narration**.  
 
-1. Format Requirements:
-- Convert to pure text without narrator labels or sound effects
-- Ensure smooth, conversational flow
-- Maintain clear, minimal formatting
+### **Formatting Rules (Strict, No Exceptions)**  
+- Convert everything to **pure text** with a **smooth, conversational flow**.  
+- **NO markdown, symbols, formatting, or special characters**—just clean, spoken-style text.  
+- **NO narrator labels, sound effects, or section headings** (e.g., remove "#", "###", "**bold**", "_italics_").  
+- The output should **read exactly as someone would say it aloud**.  
 
-2. Markdown Formatting:
-- Main titles: # (H1)
-- Section headers: ## (H2) 
-- Subsections: ### (H3)
-- Regular content: Standard paragraph text
-- Emphasis: **bold text**
-- Follow standard Markdown syntax
-
-3. Technical Specifications:
-- Structure must be CSS-compatible
-- Use proper Markdown hierarchy
-- Preserve semantic meaning
-- Ensure clean rendering across platforms
-
-Please provide the enhanced text using the above formatting guidelines.
+### **Output Instructions**  
+- **DO NOT** include any preambles like "Here is your text"—just return the cleaned script.  
+- Your **only purpose** is to refine the text for natural speech.  
 `
 ]
