@@ -16,6 +16,8 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { currentStudyGuide } = useClass();
 
+  
+
   return (
     <Tabs
       screenOptions={{

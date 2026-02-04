@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, SafeAreaView, View, Text, ActivityIndicator, Modal, TextInput, Animated, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { Platform, Pressable, StyleSheet, SafeAreaView, View, Text, ActivityIndicator, Modal, TextInput, Animated, KeyboardAvoidingView, ScrollView, Image } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useClass } from '@/contexts/ClassContext';
 import { useEffect, useRef, useState } from 'react';
@@ -7,7 +7,8 @@ import { useClassesLocal } from '@/hooks/useDataFetch';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import React from 'react';
 import { TestComponent } from '@/components/testComponent';
-
+import { replicate } from '@/constants/clients/replicateClient';
+import * as FileSystem from 'expo-file-system';
 
 export default function HomeScreen() {
   const { classes, classesLoading, classesError, setSelectedClassId, setCurrentStudyGuide } = useClass()
@@ -21,6 +22,9 @@ export default function HomeScreen() {
   const [classToDelete, setClassToDelete] = useState<any>();
   const [deleteClassModalVisible, setDeleteClassModalVisible] = useState(false);
   const [localClasses, setLocalClasses] = useState(classes);
+
+  const [replicatetestimagesource, setReplicateTestImageSource] = useState('');
+  const [replicatedebugmessage, setReplicateDebugMessage] = useState('');
 
   const handleDeleteAllClasses = async () => {
     await deleteAllClasses();
@@ -299,6 +303,41 @@ export default function HomeScreen() {
     },
   });
 
+  const testReplicateGenImage = async () => {
+    try {
+      setReplicateDebugMessage('Running...');
+      
+      const output = await replicate.run("luma/photon-flash", { 
+        input: { prompt: 'a vintage old cellphone camera in the 70s era on a table in a diner at night.' }
+      });
+      
+      console.log('Raw output:', output);
+      
+      // Handle the function url() case specifically
+      let imageUrl = '';
+      
+      if (output && typeof output === 'object' && typeof (output as any).url === 'function') {
+        // If url is a function, call it
+        imageUrl = (output as any).url();
+        console.log('Called url() function');
+      } else {
+        // Fallback to other formats
+        imageUrl = typeof output === 'string' ? output : 
+          Array.isArray(output) ? output[0] : 
+          ((output as any)?.url || '');
+      }
+      
+      if (imageUrl) {
+        setReplicateTestImageSource(imageUrl);
+        setReplicateDebugMessage('Generated: ' + imageUrl);
+      } else {
+        setReplicateDebugMessage('No URL found in output. Check console.');
+      }
+    } catch (error) {
+      setReplicateDebugMessage('Error: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  }
+
 
   return (
     <>
@@ -365,7 +404,23 @@ export default function HomeScreen() {
                 <Text style={styles.deleteButtonText}>Delete All Classes</Text>
               </Pressable> */}
             </View>
+            
+            {/* replicate test  */}
+            <Pressable onPress={() => testReplicateGenImage()}>
+              <Text>Test</Text>
+            </Pressable>
+
+            <Text>{replicatedebugmessage}</Text>
+          
+          {/* {replicatetestimagesource &&((
+            <Image
+            source={{uri: replicatetestimagesource}}
+            style={{width: 200, height: 200}}
+            />
+          ))} */}
+          
           </ScrollView>
+
 
         )}
 
@@ -376,31 +431,25 @@ export default function HomeScreen() {
           visible={modalVisible}
           onRequestClose={hideModal}
         >
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={hideModal}
-            >
-            <Animated.View
-              style={[styles.modalContent, {
-                transform: [{
-                  translateY: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [600, 0]
-                  })
-                }],
-                paddingBottom: 35,
-              }]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add New Class</Text>
-                <Pressable onPress={hideModal}>
-                  <Text style={styles.modalCloseButton}>×</Text>
-                </Pressable>
-              </View>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+            <Pressable style={styles.modalOverlay} onPress={hideModal}>
+              <Animated.View
+                style={[styles.modalContent, {
+                  transform: [{
+                    translateY: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [600, 0]
+                    })
+                  }],
+                  paddingBottom: 35,
+                }]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Add New Class</Text>
+                  <Pressable onPress={hideModal}>
+                    <Text style={styles.modalCloseButton}>×</Text>
+                  </Pressable>
+                </View>
 
               <View style={styles.modalBody}>
                 <View style={styles.inputContainer}>
@@ -436,6 +485,7 @@ export default function HomeScreen() {
                   <Text style={styles.submitButtonText}>Add Class</Text>
                 </Pressable>
               </View>
+              
             </Animated.View>
           </Pressable>
           </KeyboardAvoidingView>
