@@ -69,9 +69,11 @@ export default function ChooseClassScreen() {
     deleteClass,
   } = useClass();
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [newClassName, setNewClassName] = useState('');
   const [newClassDescription, setNewClassDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const deleteSlideAnim = useRef(new Animated.Value(0)).current;
 
@@ -81,14 +83,16 @@ export default function ChooseClassScreen() {
     setSelectedClassId(null);
     setCurrentStudyGuide(null);
     fetchClasses();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentional mount-only fetch
 
   const showModal = () => {
+    slideAnim.stopAnimation();
     setModalVisible(true);
     Animated.spring(slideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const hideModal = () => {
+    slideAnim.stopAnimation();
     Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
       setModalVisible(false);
       setNewClassName('');
@@ -97,30 +101,43 @@ export default function ChooseClassScreen() {
   };
 
   const handleAddClass = async () => {
-    if (!newClassName.trim() || !newClassDescription.trim()) return;
-    await addClass({
-      id: Date.now().toString(),
-      name: newClassName.trim(),
-      description: newClassDescription.trim(),
-    });
-    hideModal();
+    if (submitting || !newClassName.trim() || !newClassDescription.trim()) return;
+    setSubmitting(true);
+    try {
+      await addClass({
+        id: Date.now().toString(),
+        name: newClassName.trim(),
+        description: newClassDescription.trim(),
+      });
+      hideModal();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const showDeleteModal = (id: string, name: string) => {
     setDeleteTarget({ id, name });
+    setDeleteModalVisible(true);
+    deleteSlideAnim.stopAnimation();
     Animated.spring(deleteSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const hideDeleteModal = () => {
-    Animated.spring(deleteSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() =>
-      setDeleteTarget(null)
-    );
+    deleteSlideAnim.stopAnimation();
+    Animated.spring(deleteSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+    });
   };
 
   const handleDelete = async () => {
-    if (deleteTarget) {
+    if (submitting || !deleteTarget) return;
+    setSubmitting(true);
+    try {
       await deleteClass(deleteTarget.id);
       hideDeleteModal();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -267,7 +284,7 @@ export default function ChooseClassScreen() {
       {/* Delete Confirm Modal */}
       <Modal
         transparent
-        visible={!!deleteTarget}
+        visible={deleteModalVisible}
         animationType="none"
         onRequestClose={hideDeleteModal}
       >
