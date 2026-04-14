@@ -1,7 +1,6 @@
 // app/(tabs)/(class)/study.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -152,7 +151,7 @@ export default function StudyScreen() {
   const accentColor = C.accentGreen;
 
   const { studyGuides, loading: guidesLoading, addStudyGuide } = useStudyGuidesLocal(classId);
-  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet } = useFlashcardSetsLocal(classId);
+  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet, deleteFlashcardSet } = useFlashcardSetsLocal(classId);
 
   const toggleStar = async (setId: string, cardId: string) => {
     const set = flashcardSets.find((s) => s.id === setId);
@@ -163,21 +162,43 @@ export default function StudyScreen() {
     });
   };
 
-  const hideCard = (setId: string, cardId: string) => {
-    Alert.alert('Hide card?', 'This card will be removed from your deck.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Hide', style: 'destructive', onPress: async () => {
-          const set = flashcardSets.find((s) => s.id === setId);
-          if (!set) return;
-          await updateFlashcardSet({
-            ...set,
-            cards: set.cards.map((c) => c.id === cardId ? { ...c, hidden: true } : c),
-          });
-        },
-      },
-    ]);
+  type ConfirmAction =
+    | { type: 'hide-card'; setId: string; cardId: string }
+    | { type: 'delete-set'; setId: string; title: string };
+
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const confirmSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const showConfirm = (action: ConfirmAction) => {
+    setConfirmAction(action);
+    confirmSlideAnim.stopAnimation();
+    Animated.spring(confirmSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
+
+  const hideConfirm = () => {
+    confirmSlideAnim.stopAnimation();
+    Animated.spring(confirmSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setConfirmAction(null);
+    });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'hide-card') {
+      const set = flashcardSets.find((s) => s.id === confirmAction.setId);
+      if (set) {
+        await updateFlashcardSet({
+          ...set,
+          cards: set.cards.map((c) => c.id === confirmAction.cardId ? { ...c, hidden: true } : c),
+        });
+      }
+    } else if (confirmAction.type === 'delete-set') {
+      await deleteFlashcardSet(confirmAction.setId);
+    }
+    hideConfirm();
+  };
+
+  const hideCard = (setId: string, cardId: string) => showConfirm({ type: 'hide-card', setId, cardId });
 
   const [activeTab, setActiveTab] = useState<Tab>('guides');
   const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(new Set());
@@ -431,7 +452,7 @@ export default function StudyScreen() {
                           }}
                           style={[styles.setTitleRow, { borderColor: isExpanded ? accentColor : C.border }]}
                         >
-                          <View>
+                          <View style={{ flex: 1 }}>
                             <Text style={[styles.setTitleText, { color: C.text }]}>
                               {set.title || 'Flashcard Set'}
                             </Text>
@@ -439,9 +460,17 @@ export default function StudyScreen() {
                               {visibleCards.length} CARDS
                             </Text>
                           </View>
-                          <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
-                            {isExpanded ? '˄' : '˅'}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                            <Pressable
+                              onPress={() => showConfirm({ type: 'delete-set', setId: set.id, title: set.title || 'Flashcard Set' })}
+                              hitSlop={10}
+                            >
+                              <Text style={{ color: '#e05c5c', fontSize: 16 }}>⊘</Text>
+                            </Pressable>
+                            <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
+                              {isExpanded ? '˄' : '˅'}
+                            </Text>
+                          </View>
                         </Pressable>
                         {isExpanded && visibleCards.map((card) => (
                           <FlipCard
@@ -544,6 +573,43 @@ export default function StudyScreen() {
             </Animated.View>
           </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Destructive Action Confirm Sheet */}
+      <Modal transparent visible={!!confirmAction} animationType="none" onRequestClose={hideConfirm}>
+        <Pressable style={styles.overlay} onPress={hideConfirm}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { backgroundColor: C.surface },
+              { transform: [{ translateY: confirmSlideAnim.interpolate({ inputRange: [0, 1], outputRange: [300, 0] }) }] },
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: C.text }]}>
+                {confirmAction?.type === 'delete-set' ? 'Delete Set' : 'Hide Card'}
+              </Text>
+              <Pressable onPress={hideConfirm}>
+                <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+              </Pressable>
+            </View>
+            <View style={styles.sheetBody}>
+              <Text style={[{ color: C.textMuted, fontSize: 14, lineHeight: 20, marginBottom: 20 }]}>
+                {confirmAction?.type === 'delete-set'
+                  ? `Delete "${confirmAction.title}"? All ${flashcardSets.find(s => s.id === confirmAction.setId)?.cards.length ?? 0} cards will be permanently removed.`
+                  : 'Hide this card? It won\'t show up in your deck anymore.'}
+              </Text>
+              <Pressable onPress={handleConfirm} style={[styles.submitBtn, { backgroundColor: '#e05c5c' }]}>
+                <Text style={[styles.submitBtnText, { color: '#fff' }]}>
+                  {confirmAction?.type === 'delete-set' ? 'Yes, Delete Set' : 'Yes, Hide Card'}
+                </Text>
+              </Pressable>
+              <Pressable onPress={hideConfirm} style={[styles.submitBtn, { backgroundColor: C.border, marginTop: 8 }]}>
+                <Text style={[styles.submitBtnText, { color: C.textMuted }]}>Cancel</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </Pressable>
       </Modal>
 
       {/* Generate Flashcards Modal */}
