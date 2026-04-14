@@ -272,7 +272,7 @@ export default function StudyScreen() {
     setGenerateLog(['Calling AI...']);
     try {
       const raw = await openRouterChat({
-        model: 'openai/gpt-oss-20b:free',
+        model: 'google/gemma-3-27b-it:free',
         messages: [
           {
             role: 'system',
