@@ -242,7 +242,7 @@ export default function StudyScreen() {
     setGenerateLog(['Calling AI...']);
     try {
       const raw = await openRouterChat({
-        model: 'arcee-ai/trinity-large-preview:free',
+        model: 'meta-llama/llama-3.1-8b-instruct:free',
         messages: [
           {
             role: 'system',
