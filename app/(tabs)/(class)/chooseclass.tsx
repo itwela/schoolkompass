@@ -1,619 +1,369 @@
-import { Platform, Pressable, StyleSheet, SafeAreaView, View, Text, ActivityIndicator, Modal, TextInput, Animated, KeyboardAvoidingView, ScrollView, Image } from 'react-native';
-import { Link, router } from 'expo-router';
+// app/(tabs)/(class)/chooseclass.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Colors } from '@/constants/Colors';
+import ClassCard from '@/components/ClassCard';
+import SectionLabel from '@/components/SectionLabel';
+import SkeletonCard from '@/components/SkeletonCard';
 import { useClass } from '@/contexts/ClassContext';
-import { useEffect, useRef, useState } from 'react';
-import { colors, commonStyles } from '@/constants/styles';
-import { useClassesLocal } from '@/hooks/useDataFetch';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import React from 'react';
-import { TestComponent } from '@/components/testComponent';
-import { replicate } from '@/constants/clients/replicateClient';
-import * as FileSystem from 'expo-file-system';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useStudyGuidesLocal, useFlashcardSetsLocal, useQuizzesLocal } from '@/hooks/useDataFetch';
 
-export default function HomeScreen() {
-  const { classes, classesLoading, classesError, setSelectedClassId, setCurrentStudyGuide } = useClass()
-  const { fetchClasses, addClass, deleteClass, deleteAllClasses } = useClassesLocal()
+// Per-class wrapper so we can call hooks for each class
+function ClassCardWrapper({
+  classItem,
+  index,
+  onPress,
+  onDelete,
+}: {
+  classItem: { id: string; name: string; description: string };
+  index: number;
+  onPress: () => void;
+  onDelete: () => void;
+}) {
+  const { theme } = useTheme();
+  const C = Colors[theme];
+  const accentColor = index % 2 === 0 ? C.accentGreen : C.accentGold;
+  const { studyGuides } = useStudyGuidesLocal(classItem.id);
+  const { flashcardSets } = useFlashcardSetsLocal(classItem.id);
+  const { quizzes } = useQuizzesLocal(classItem.id);
+
+  return (
+    <ClassCard
+      name={classItem.name}
+      description={classItem.description}
+      accentColor={accentColor}
+      guideCount={studyGuides.length}
+      hasGuides={studyGuides.length > 0}
+      hasFlashcards={flashcardSets.length > 0}
+      hasQuiz={quizzes.length > 0}
+      onPress={onPress}
+      onDelete={onDelete}
+    />
+  );
+}
+
+export default function ChooseClassScreen() {
+  const { theme, toggleTheme } = useTheme();
+  const C = Colors[theme];
+  const {
+    classes,
+    classesLoading,
+    setSelectedClassId,
+    setCurrentStudyGuide,
+    setCurrentClassName,
+    fetchClasses,
+    addClass,
+    deleteClass,
+  } = useClass();
   const [modalVisible, setModalVisible] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [newClassName, setNewClassName] = useState('');
   const [newClassDescription, setNewClassDescription] = useState('');
   const slideAnim = useRef(new Animated.Value(0)).current;
   const deleteSlideAnim = useRef(new Animated.Value(0)).current;
-  const [classToDelete, setClassToDelete] = useState<any>();
-  const [deleteClassModalVisible, setDeleteClassModalVisible] = useState(false);
-  const [localClasses, setLocalClasses] = useState(classes);
 
-  const [replicatetestimagesource, setReplicateTestImageSource] = useState('');
-  const [replicatedebugmessage, setReplicateDebugMessage] = useState('');
-
-  const handleDeleteAllClasses = async () => {
-    await deleteAllClasses();
-    setDeleteModalVisible(false);
-    setLocalClasses([]);
-  };
+  const realClasses = classes.filter((c) => c.id !== '0');
 
   useEffect(() => {
-    if (Array.isArray(classes)) {  // Add check for array
-      setLocalClasses(classes);
-    }
-  }, [classes]);
-
-  useEffect(() => {
-    if (deleteClassModalVisible) {
-      Animated.spring(deleteSlideAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11
-      }).start();
-    } else {
-      Animated.spring(deleteSlideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11
-      }).start();
-    }
-  }, [deleteClassModalVisible]);
+    setSelectedClassId(null);
+    setCurrentStudyGuide(null);
+    fetchClasses();
+  }, []);
 
   const showModal = () => {
     setModalVisible(true);
-    Animated.spring(slideAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11
-    }).start();
+    Animated.spring(slideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const hideModal = () => {
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11
-    }).start(() => setModalVisible(false));
+    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setModalVisible(false);
+      setNewClassName('');
+      setNewClassDescription('');
+    });
   };
 
   const handleAddClass = async () => {
-    if (newClassName.trim() && newClassDescription.trim()) {
-      const newClass = {
-        id: Date.now().toString(),
-        name: newClassName.trim(),
-        description: newClassDescription.trim()
-      };
-      await addClass(newClass);
-      setLocalClasses(prev => [...prev, newClass]);
-      setNewClassName('');
-      setNewClassDescription('');
-      hideModal();
+    if (!newClassName.trim() || !newClassDescription.trim()) return;
+    await addClass({
+      id: Date.now().toString(),
+      name: newClassName.trim(),
+      description: newClassDescription.trim(),
+    });
+    hideModal();
+  };
+
+  const showDeleteModal = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+    Animated.spring(deleteSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const hideDeleteModal = () => {
+    Animated.spring(deleteSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() =>
+      setDeleteTarget(null)
+    );
+  };
+
+  const handleDelete = async () => {
+    if (deleteTarget) {
+      await deleteClass(deleteTarget.id);
+      hideDeleteModal();
     }
   };
 
-  useEffect(() => {
-    setSelectedClassId(null)
-    setCurrentStudyGuide(null)
-    fetchClasses()
-  }, [])
-
-  const styles = StyleSheet.create({
-    ...commonStyles,
-    container: {
-      flex: 1,
-      padding: 20,
-      backgroundColor: useThemeColor({}, 'background'),
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 30,
-      marginTop: 10,
-    },
-
-    deleteButtonContainer: {
-      paddingVertical: 20,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      marginTop: 'auto',  // This pushes it to the bottom of the list
-    },
-    deleteButton: {
-      backgroundColor: '#FF3B30',
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 12,
-      opacity: 0.8,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
+  const makeSheetStyle = (anim: Animated.Value) => ({
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [600, 0],
+        }),
       },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    deleteButtonText: {
-      color: useThemeColor({}, 'text'),
-      fontSize: 16,
-      fontWeight: '600',
-      textAlign: 'center',
-    },
-      headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: useThemeColor({}, 'text'),
-      },
-    addButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: useThemeColor({}, 'teal'),
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-    },
-  
-    addButtonText: {
-      fontSize: 24,
-      color: useThemeColor({}, 'text'),
-      fontWeight: '600',
-      lineHeight: 28,
-    },
-    classList: {
-      flex: 1,
-      paddingTop: 10,
-    },
-    classCard: {
-      backgroundColor: useThemeColor({}, 'background'),
-      borderRadius: 12,
-      marginBottom: 16,
-      padding: 16,
-      shadowColor: useThemeColor({}, 'text'),
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 3.84,
-      elevation: 5,
-    },
-    cardContent: {
-      flex: 1,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    className: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: useThemeColor({}, 'text'),
-      flex: 1,
-      marginRight: 8,
-    },
-    classDescription: {
-      fontSize: 16,
-      color: useThemeColor({}, 'text'),
-      lineHeight: 22,
-    },
-    trashIcon: {
-      padding: 8,
-      marginRight: -8,
-    },
-    trashIconText: {
-      fontSize: 20,
-      opacity: 0.7,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'flex-end',
-    },
-    modalContent: {
-      backgroundColor: useThemeColor({}, 'background'),
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: 24,
-      paddingTop: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    modalTitle: {
-      fontSize: 28,
-      fontWeight: '600',
-      color: useThemeColor({}, 'text'),
-      letterSpacing: -0.5,
-    },
-    modalCloseButton: {
-      fontSize: 36,
-      color: '#666666',
-      marginTop: -8,
-      marginRight: -8,
-    },
-    modalBody: {
-      gap: 20,
-    },
-    inputContainer: {
-      gap: 10,
-    },
-    inputLabel: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: useThemeColor({}, 'text'),
-      marginBottom: 2,
-    },
-    input: {
-      backgroundColor: useThemeColor({}, 'background'),
-      borderRadius: 12,
-      padding: 16,
-      fontSize: 17,
-      color: useThemeColor({}, 'text'),
-    },
-    textArea: {
-      height: 120,
-      textAlignVertical: 'top',
-    },
-    submitButton: {
-      backgroundColor: useThemeColor({}, 'tint'),
-      borderRadius: 16,
-      padding: 18,
-      alignItems: 'center',
-      marginTop: 12,
-      shadowColor: useThemeColor({}, 'tint'),
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    submitButtonText: {
-      color: useThemeColor({}, 'text'),
-      fontSize: 17,
-      fontWeight: '600',
-    },
-    deleteWarningText: {
-      fontSize: 17,
-      color: useThemeColor({}, 'text'),
-      textAlign: 'center',
-      marginBottom: 20,
-      lineHeight: 24,
-    },
-    deleteConfirmButton: {
-      backgroundColor: '#FF3B30',
-    },
-    deleteCancelButton: {
-      backgroundColor: '#8E8E93',
-    },
+    ],
   });
 
-  const testReplicateGenImage = async () => {
-    try {
-      setReplicateDebugMessage('Running...');
-      
-      const output = await replicate.run("luma/photon-flash", { 
-        input: { prompt: 'a vintage old cellphone camera in the 70s era on a table in a diner at night.' }
-      });
-      
-      console.log('Raw output:', output);
-      
-      // Handle the function url() case specifically
-      let imageUrl = '';
-      
-      if (output && typeof output === 'object' && typeof (output as any).url === 'function') {
-        // If url is a function, call it
-        imageUrl = (output as any).url();
-        console.log('Called url() function');
-      } else {
-        // Fallback to other formats
-        imageUrl = typeof output === 'string' ? output : 
-          Array.isArray(output) ? output[0] : 
-          ((output as any)?.url || '');
-      }
-      
-      if (imageUrl) {
-        setReplicateTestImageSource(imageUrl);
-        setReplicateDebugMessage('Generated: ' + imageUrl);
-      } else {
-        setReplicateDebugMessage('No URL found in output. Check console.');
-      }
-    } catch (error) {
-      setReplicateDebugMessage('Error: ' + (error instanceof Error ? error.message : String(error)));
-    }
-  }
-
-
   return (
-    <>
-
-
-    <SafeAreaView style={{ width: "100%", height: "100%", backgroundColor: useThemeColor({}, 'background') }}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]}>
       <View style={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Classes</Text>
-          <Pressable style={styles.addButton} onPress={showModal}>
-            <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
+          <SectionLabel>My Classes</SectionLabel>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={toggleTheme}
+              style={[styles.iconBtn, { borderColor: C.border }]}
+            >
+              <Text style={{ fontSize: 14 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+            </Pressable>
+            <Pressable
+              onPress={showModal}
+              style={[styles.addBtn, { backgroundColor: C.accentGreen }]}
+            >
+              <Text style={[styles.addBtnText, { color: C.buttonText }]}>+</Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* SECTION LOADING.....  */}
-        {classesLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : classesError ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: 'red' }}>{classesError}</Text>
-          </View>
-        ) : (
-          // SECTION END SECTION LOADING..... */}
-
-          <ScrollView style={styles.classList}>
-
-            {localClasses?.sort((a, b) => (a.id === "0" ? 1 : b.id === "0" ? -1 : 0))?.map((classItem) => (
+        {/* List */}
+        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+          {classesLoading ? (
+            <>
+              <SkeletonCard height={90} />
+              <SkeletonCard height={90} />
+              <SkeletonCard height={90} />
+            </>
+          ) : realClasses.length === 0 ? (
             <Pressable
-              onPress={() => { classItem?.id === "0" ? showModal() : setSelectedClassId(classItem?.id); }}
-              key={classItem?.id}
-              style={styles.classCard}
+              onPress={showModal}
+              style={[styles.emptyCard, { borderColor: C.accentGreen }]}
             >
-              {/* NOTE DELETE CLASS */}
-              <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                  
-                  <Text style={styles.className}>
-                    {classItem.name}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setClassToDelete(classItem);
-                      setDeleteClassModalVisible(true);
-                    }}
-                    style={styles.trashIcon}
-                  >
-                    <Text style={styles.trashIconText}>🗑️</Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.classDescription}>
-                  {classItem.description}
-                </Text>
-              </View>
+              <Text style={[styles.emptyPlus, { color: C.accentGreen }]}>+</Text>
+              <Text style={[styles.emptyLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                ADD CLASS
+              </Text>
             </Pressable>
-          ))}
-
-            <View style={styles.deleteButtonContainer}>
-              {/* <Pressable
-                style={styles.deleteButton}
-                onPress={() => setDeleteModalVisible(true)}
-              >
-                <Text style={styles.deleteButtonText}>Delete All Classes</Text>
-              </Pressable> */}
-            </View>
-            
-            {/* replicate test  */}
-            <Pressable onPress={() => testReplicateGenImage()}>
-              <Text>Test</Text>
-            </Pressable>
-
-            <Text>{replicatedebugmessage}</Text>
-          
-          {/* {replicatetestimagesource &&((
-            <Image
-            source={{uri: replicatetestimagesource}}
-            style={{width: 200, height: 200}}
-            />
-          ))} */}
-          
-          </ScrollView>
-
-
-        )}
-
-        {/* Add Class Modal */}
-        <Modal
-          animationType="none"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={hideModal}
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-            <Pressable style={styles.modalOverlay} onPress={hideModal}>
-              <Animated.View
-                style={[styles.modalContent, {
-                  transform: [{
-                    translateY: slideAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [600, 0]
-                    })
-                  }],
-                  paddingBottom: 35,
-                }]}
-              >
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Add New Class</Text>
-                  <Pressable onPress={hideModal}>
-                    <Text style={styles.modalCloseButton}>×</Text>
-                  </Pressable>
-                </View>
-
-              <View style={styles.modalBody}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Class Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={newClassName}
-                    onChangeText={setNewClassName}
-                    placeholder="Enter class name"
-                    placeholderTextColor="#999999"
-                    autoFocus={true}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Description</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    value={newClassDescription}
-                    onChangeText={setNewClassDescription}
-                    placeholder="Enter class description"
-                    placeholderTextColor="#999999"
-                    multiline
-                    numberOfLines={4}
-                    autoFocus={true}
-                  />
-                </View>
-
-                <Pressable
-                  style={styles.submitButton}
-                  onPress={handleAddClass}
-                >
-                  <Text style={styles.submitButtonText}>Add Class</Text>
-                </Pressable>
-              </View>
-              
-            </Animated.View>
-          </Pressable>
-          </KeyboardAvoidingView>
-        </Modal>
-
-        {/* Delete SINGLE Confirmation Modal */}
-        <Modal
-          animationType="none"
-          transparent={true}
-          visible={deleteClassModalVisible}
-          onRequestClose={() => setDeleteClassModalVisible(false)}
-        >
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setDeleteClassModalVisible(false)}
-            >
-            <Animated.View
-              style={[styles.modalContent, {
-                transform: [{
-                  translateY: deleteSlideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [600, 0]
-                  })
-                }],
-                paddingBottom: 35,
-              }]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Delete Class</Text>
-                <Pressable onPress={() => setDeleteClassModalVisible(false)}>
-                  <Text style={styles.modalCloseButton}>×</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.modalBody}>
-                <Text style={styles.deleteWarningText}>
-                  Are you sure you want to delete "{classToDelete?.name}"? This will remove all associated study guides and data.
-                </Text>
-                <Pressable
-                  style={[styles.submitButton, styles.deleteConfirmButton]}
-                  onPress={async () => {
-                    if (classToDelete?.id) {
-                      await deleteClass(classToDelete.id);
-                      setDeleteClassModalVisible(false);
-                      router.reload();
-                    }
-                  }}
-                >
-                  <Text style={styles.submitButtonText}>Yes, Delete Class</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.submitButton, styles.deleteCancelButton]}
-                  onPress={() => setDeleteClassModalVisible(false)}
-                >
-                  <Text style={styles.submitButtonText}>Cancel</Text>
-                </Pressable>
-              </View>
-            </Animated.View>
-          </Pressable>
-          </KeyboardAvoidingView>
-        </Modal>
-
-        {/* Delete ALL Confirmation Modal */}
-        <Modal
-          animationType="none"
-          transparent={true}
-          visible={deleteModalVisible}
-          onRequestClose={() => setDeleteModalVisible(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setDeleteModalVisible(false)}
-            >
-            <Animated.View
-              style={[styles.modalContent, {
-                transform: [{
-                  translateY: deleteSlideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [600, 0]
-                  })
-                }],
-                paddingBottom: 35,
-              }]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Delete All Classes</Text>
-                <Pressable onPress={() => setDeleteModalVisible(false)}>
-                  <Text style={styles.modalCloseButton}>×</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.modalBody}>
-                <Text style={styles.deleteWarningText}>
-                  Are you sure you want to delete all classes? This action cannot be undone.
-                </Text>
-                <Pressable
-                  style={[styles.submitButton, styles.deleteConfirmButton]}
-                  onPress={handleDeleteAllClasses}
-                >
-                  <Text style={styles.submitButtonText}>Yes, Delete All</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.submitButton, styles.deleteCancelButton]}
-                  onPress={() => setDeleteModalVisible(false)}
-                >
-                  <Text style={styles.submitButtonText}>Cancel</Text>
-                </Pressable>
-              </View>
-            </Animated.View>
-          </Pressable>
-          </KeyboardAvoidingView>
-        </Modal>
-
+          ) : (
+            realClasses.map((cls, index) => (
+              <ClassCardWrapper
+                key={cls.id}
+                classItem={cls}
+                index={index}
+                onPress={() => {
+                  setSelectedClassId(cls.id);
+                  setCurrentClassName(cls.name);
+                }}
+                onDelete={() => showDeleteModal(cls.id, cls.name)}
+              />
+            ))
+          )}
+        </ScrollView>
       </View>
-    </SafeAreaView>
-    {/* {testMode === false && (
-    )} */}
 
-    </>
+      {/* Add Class Modal */}
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="none"
+        onRequestClose={hideModal}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <Pressable style={styles.overlay} onPress={hideModal}>
+            <Animated.View
+              style={[styles.sheet, { backgroundColor: C.surface }, makeSheetStyle(slideAnim)]}
+            >
+              <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: C.text }]}>Add New Class</Text>
+                <Pressable onPress={hideModal}>
+                  <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+                </Pressable>
+              </View>
+              <View style={styles.sheetBody}>
+                <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                  CLASS NAME
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                  value={newClassName}
+                  onChangeText={setNewClassName}
+                  placeholder="e.g. Network Security — D315"
+                  placeholderTextColor={C.textMuted}
+                  autoFocus
+                />
+                <Text
+                  style={[
+                    styles.inputLabel,
+                    { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 12 },
+                  ]}
+                >
+                  DESCRIPTION
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    { backgroundColor: C.bg, color: C.text, borderColor: C.border },
+                  ]}
+                  value={newClassDescription}
+                  onChangeText={setNewClassDescription}
+                  placeholder="Course code, term, notes..."
+                  placeholderTextColor={C.textMuted}
+                  multiline
+                  numberOfLines={3}
+                />
+                <Pressable
+                  onPress={handleAddClass}
+                  style={[
+                    styles.submitBtn,
+                    {
+                      backgroundColor: C.accentGreen,
+                      opacity: newClassName.trim() && newClassDescription.trim() ? 1 : 0.4,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Add Class</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal
+        transparent
+        visible={!!deleteTarget}
+        animationType="none"
+        onRequestClose={hideDeleteModal}
+      >
+        <Pressable style={styles.overlay} onPress={hideDeleteModal}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { backgroundColor: C.surface },
+              makeSheetStyle(deleteSlideAnim),
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: C.text }]}>Delete Class</Text>
+              <Pressable onPress={hideDeleteModal}>
+                <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+              </Pressable>
+            </View>
+            <View style={styles.sheetBody}>
+              <Text style={[styles.deleteWarning, { color: C.textMuted }]}>
+                Delete "{deleteTarget?.name}"? All study guides and data will be removed.
+              </Text>
+              <Pressable
+                onPress={handleDelete}
+                style={[styles.submitBtn, { backgroundColor: '#ff4444' }]}
+              >
+                <Text style={[styles.submitBtnText, { color: '#fff' }]}>Yes, Delete</Text>
+              </Pressable>
+              <Pressable
+                onPress={hideDeleteModal}
+                style={[styles.submitBtn, { backgroundColor: C.fadedGrey, marginTop: 8 }]}
+              >
+                <Text style={[styles.submitBtnText, { color: C.textMuted }]}>Cancel</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
-
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  container: { flex: 1, padding: 20 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 8,
+  },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnText: { fontSize: 22, fontWeight: '300', lineHeight: 26 },
+  list: { flex: 1 },
+  emptyCard: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    height: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  emptyPlus: { fontSize: 22 },
+  emptyLabel: { fontSize: 10, letterSpacing: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    paddingBottom: 16,
+  },
+  sheetTitle: { fontSize: 22, fontWeight: '600' },
+  sheetClose: { fontSize: 32, marginTop: -4 },
+  sheetBody: { paddingHorizontal: 24, gap: 4 },
+  inputLabel: { fontSize: 9, letterSpacing: 1, marginBottom: 6 },
+  input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 16 },
+  textArea: { height: 100, textAlignVertical: 'top' },
+  submitBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+  submitBtnText: { fontSize: 16, fontWeight: '600' },
+  deleteWarning: { fontSize: 15, lineHeight: 22, marginBottom: 8 },
+});
