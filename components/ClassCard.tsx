@@ -7,9 +7,12 @@ import { Colors } from '@/constants/Colors';
 type ClassCardProps = {
   name: string;
   description: string;
+  /** Must be a 6-digit hex color string (e.g. '#90d060') */
   accentColor: string;
   guideCount: number;
+  hasGuides: boolean;
   hasFlashcards: boolean;
+  hasQuiz: boolean;
   onPress: () => void;
   onDelete: () => void;
 };
@@ -19,7 +22,9 @@ export default function ClassCard({
   description,
   accentColor,
   guideCount,
+  hasGuides,
   hasFlashcards,
+  hasQuiz,
   onPress,
   onDelete,
 }: ClassCardProps) {
@@ -55,19 +60,25 @@ export default function ClassCard({
 
         <View style={styles.bottomRow}>
           <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: C.fadedGrey }]}>
-              <Text style={[styles.badgeText, { color: C.textMuted }]}>GUIDES</Text>
+            <View style={[styles.badge, { backgroundColor: hasGuides ? `${accentColor}18` : C.fadedGrey }]}>
+              <Text style={[styles.badgeText, { color: hasGuides ? accentColor : C.textMuted }]}>GUIDES</Text>
             </View>
             <View style={[styles.badge, { backgroundColor: hasFlashcards ? `${accentColor}18` : C.fadedGrey }]}>
               <Text style={[styles.badgeText, { color: hasFlashcards ? accentColor : C.textMuted }]}>
                 FLASHCARDS
               </Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: C.fadedGrey }]}>
-              <Text style={[styles.badgeText, { color: C.textMuted }]}>QUIZ</Text>
+            <View style={[styles.badge, { backgroundColor: hasQuiz ? `${accentColor}18` : C.fadedGrey }]}>
+              <Text style={[styles.badgeText, { color: hasQuiz ? accentColor : C.textMuted }]}>QUIZ</Text>
             </View>
           </View>
-          <Pressable onPress={onDelete} hitSlop={12} style={styles.trash}>
+          <Pressable
+            onPress={onDelete}
+            hitSlop={12}
+            style={styles.trash}
+            accessibilityLabel="Delete class"
+            accessibilityRole="button"
+          >
             <Text style={{ fontSize: 16 }}>🗑️</Text>
           </Pressable>
         </View>
