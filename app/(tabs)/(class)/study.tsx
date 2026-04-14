@@ -20,6 +20,7 @@ import SkeletonCard from '@/components/SkeletonCard';
 import { useClass } from '@/contexts/ClassContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useStudyGuidesLocal, useFlashcardSetsLocal } from '@/hooks/useDataFetch';
+import { openRouterChat } from '@/constants/clients/openrouterClient';
 
 type Tab = 'guides' | 'flashcards' | 'quiz';
 
@@ -76,51 +77,61 @@ function FlipCard({
   const frontRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
   const backRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] });
 
-  const Actions = () => (
-    <View style={styles.flipCardActions}>
-      <Pressable onPress={onToggleStar} hitSlop={10}>
-        <Text style={[styles.flipCardActionIcon, { color: card.starred ? accentColor : C.textMuted }]}>
-          {card.starred ? '★' : '☆'}
-        </Text>
-      </Pressable>
-      <Pressable onPress={onHide} hitSlop={10}>
-        <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✕</Text>
-      </Pressable>
-    </View>
-  );
-
   return (
-    <Pressable onPress={flip} style={styles.flipCardContainer}>
-      {/* Front */}
-      <Animated.View
-        style={[
-          styles.flipCard,
-          { backgroundColor: C.surface, borderColor: accentColor },
-          { backfaceVisibility: 'hidden', transform: [{ rotateY: frontRotate }] },
-        ]}
-      >
-        <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>QUESTION</Text>
-        <Text style={[styles.flipCardText, { color: C.text }]}>{card.question}</Text>
-        <Actions />
-      </Animated.View>
+    <View style={styles.flipCardContainer}>
+      {/* Flip gesture covers the whole card */}
+      <Pressable onPress={flip} style={StyleSheet.absoluteFill}>
+        {/* Front */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.flipCard,
+            {
+              backgroundColor: C.surface,
+              borderColor: card.starred ? accentColor : C.border,
+              borderWidth: card.starred ? 2 : 1,
+            },
+            { backfaceVisibility: 'hidden', transform: [{ rotateY: frontRotate }] },
+          ]}
+        >
+          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>QUESTION</Text>
+          <Text style={[styles.flipCardText, { color: accentColor }]}>{card.question}</Text>
+        </Animated.View>
 
-      {/* Back */}
-      <Animated.View
-        style={[
-          styles.flipCard,
-          styles.flipCardBack,
-          { backgroundColor: C.surface, borderColor: accentColor },
-          { backfaceVisibility: 'hidden', transform: [{ rotateY: backRotate }] },
-        ]}
-      >
-        <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>ANSWER</Text>
-        <Text style={[styles.flipCardText, { color: C.text }]}>{card.answers[0]}</Text>
-        {card.explanation ? (
-          <Text style={[styles.flipCardExplanation, { color: C.textMuted }]}>{card.explanation}</Text>
-        ) : null}
-        <Actions />
-      </Animated.View>
-    </Pressable>
+        {/* Back */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.flipCard,
+            styles.flipCardBack,
+            {
+              backgroundColor: C.surface,
+              borderColor: card.starred ? accentColor : C.border,
+              borderWidth: card.starred ? 2 : 1,
+            },
+            { backfaceVisibility: 'hidden', transform: [{ rotateY: backRotate }] },
+          ]}
+        >
+          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>ANSWER</Text>
+          <Text style={[styles.flipCardText, { color: C.text }]}>{card.answers[0]}</Text>
+          {card.explanation ? (
+            <Text style={[styles.flipCardExplanation, { color: C.text }]}>{card.explanation}</Text>
+          ) : null}
+        </Animated.View>
+      </Pressable>
+
+      {/* Actions rendered once, outside the flip pressable */}
+      <View style={styles.flipCardActions}>
+        <Pressable onPress={onToggleStar} hitSlop={12}>
+          <Text style={[styles.flipCardActionIcon, { color: card.starred ? accentColor : C.textMuted }]}>
+            {card.starred ? '★' : '☆'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onHide} hitSlop={12}>
+          <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✕</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -133,13 +144,14 @@ export default function StudyScreen() {
     selectedClassId,
     currentClassName,
     setCurrentStudyGuide,
+    setSelectedClassId,
   } = useClass();
 
   const classId = selectedClassId ?? '';
   const accentColor = C.accentGreen;
 
   const { studyGuides, loading: guidesLoading, addStudyGuide } = useStudyGuidesLocal(classId);
-  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet } = useFlashcardSetsLocal(classId);
+  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet } = useFlashcardSetsLocal(classId);
 
   const toggleStar = async (setId: string, cardId: string) => {
     const set = flashcardSets.find((s) => s.id === setId);
@@ -160,6 +172,13 @@ export default function StudyScreen() {
   };
 
   const [activeTab, setActiveTab] = useState<Tab>('guides');
+  const [addFlashcardsVisible, setAddFlashcardsVisible] = useState(false);
+  const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
+  const [flashcardError, setFlashcardError] = useState<string | null>(null);
+  const [generateLog, setGenerateLog] = useState<string[]>([]);
+  const [flashcardSourceText, setFlashcardSourceText] = useState('');
+  const [flashcardSetTitle, setFlashcardSetTitle] = useState('');
+  const flashcardSlideAnim = useRef(new Animated.Value(0)).current;
   const [addGuideVisible, setAddGuideVisible] = useState(false);
   const [newGuideTitle, setNewGuideTitle] = useState('');
   const [newGuideContent, setNewGuideContent] = useState('');
@@ -198,10 +217,79 @@ export default function StudyScreen() {
     }
   };
 
+  const showAddFlashcards = () => {
+    flashcardSlideAnim.stopAnimation();
+    setFlashcardError(null);
+    setGenerateLog([]);
+    setAddFlashcardsVisible(true);
+    Animated.spring(flashcardSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const hideAddFlashcards = () => {
+    flashcardSlideAnim.stopAnimation();
+    Animated.spring(flashcardSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setAddFlashcardsVisible(false);
+      setFlashcardError(null);
+      setFlashcardSourceText('');
+      setFlashcardSetTitle('');
+    });
+  };
+
+  const generateFlashcards = async () => {
+    if (generatingFlashcards || !flashcardSourceText.trim()) return;
+    setGeneratingFlashcards(true);
+    setFlashcardError(null);
+    setGenerateLog(['Calling AI...']);
+    try {
+      const raw = await openRouterChat({
+        model: 'arcee-ai/trinity-large-preview:free',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a flashcard generator. Given study material, return exactly 15 flashcards as a raw JSON array. No markdown, no explanation — only the JSON array. Format: [{"question": "...", "answers": ["correct answer here"], "explanation": "Brief explanation."}]',
+          },
+          {
+            role: 'user',
+            content: `Generate 15 flashcards from this material:\n\n${flashcardSourceText.trim()}`,
+          },
+        ],
+        temperature: 0.3,
+        maxTokens: 4000,
+      });
+      setGenerateLog((l) => [...l, `Got response (${raw.length} chars)`, 'Parsing JSON...']);
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('Could not parse flashcards from response');
+      const parsed = JSON.parse(match[0]);
+      setGenerateLog((l) => [...l, `Parsed ${parsed.length} cards`, 'Saving to Convex...']);
+      await addFlashcardSet({
+        id: Date.now().toString(),
+        title: flashcardSetTitle.trim() || 'Flashcard Set',
+        sourceText: flashcardSourceText.trim(),
+        cards: parsed.map((c: any, i: number) => ({
+          id: `${Date.now()}-${i}`,
+          question: c.question,
+          answers: Array.isArray(c.answers) ? c.answers : [c.answers],
+          explanation: c.explanation ?? '',
+          starred: false,
+          hidden: false,
+        })),
+        lastModified: new Date().toISOString(),
+      });
+      hideAddFlashcards();
+    } catch (e: any) {
+      setFlashcardError(e?.message ?? 'Something went wrong. Try again.');
+      setGeneratingFlashcards(false);
+    } finally {
+      setGeneratingFlashcards(false);
+    }
+  };
+
   const handleBack = () => {
     if (activeTab !== 'guides') {
       setActiveTab('guides');
     } else {
+      setSelectedClassId(null);
       router.back();
     }
   };
@@ -310,30 +398,37 @@ export default function StudyScreen() {
               {flashcardsLoading ? (
                 <SkeletonCard height={180} />
               ) : flashcardSets.length === 0 ? (
-                <View style={[styles.emptyCard, { borderColor: C.border }]}>
-                  <Text style={[styles.emptyLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
-                    NO FLASHCARD SETS YET
-                  </Text>
-                </View>
+                <Pressable
+                  onPress={showAddFlashcards}
+                  style={[styles.emptyCard, { borderColor: accentColor }]}
+                >
+                  <Text style={[styles.emptyPlus, { color: accentColor }]}>+</Text>
+                  <Text style={[styles.emptyLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>GENERATE FLASHCARDS</Text>
+                </Pressable>
               ) : (
-                flashcardSets.map((set) => (
-                  <View key={set.id} style={styles.flashcardSetBlock}>
-                    {set.title && (
-                      <Text style={[styles.setTitle, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
-                        {set.title.toUpperCase()}
-                      </Text>
-                    )}
-                    {set.cards.filter((c) => !c.hidden).map((card) => (
-                      <FlipCard
-                        key={card.id}
-                        card={card}
-                        accentColor={accentColor}
-                        onToggleStar={() => toggleStar(set.id, card.id)}
-                        onHide={() => hideCard(set.id, card.id)}
-                      />
-                    ))}
-                  </View>
-                ))
+                <>
+                  {flashcardSets.map((set) => (
+                    <View key={set.id} style={styles.flashcardSetBlock}>
+                      {set.title && (
+                        <Text style={[styles.setTitle, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                          {set.title.toUpperCase()}
+                        </Text>
+                      )}
+                      {set.cards.filter((c) => !c.hidden).map((card) => (
+                        <FlipCard
+                          key={card.id}
+                          card={card}
+                          accentColor={accentColor}
+                          onToggleStar={() => toggleStar(set.id, card.id)}
+                          onHide={() => hideCard(set.id, card.id)}
+                        />
+                      ))}
+                    </View>
+                  ))}
+                  <Pressable onPress={showAddFlashcards} style={[styles.addRowBtn, { borderColor: C.border }]}>
+                    <Text style={[styles.addRowBtnText, { color: C.textMuted }]}>+ Generate Flashcards</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           )}
@@ -344,8 +439,8 @@ export default function StudyScreen() {
               {guidesLoading ? (
                 <SkeletonCard height={72} />
               ) : studyGuides.length === 0 ? (
-                <View style={[styles.emptyCard, { borderColor: C.border }]}>
-                  <Text style={[styles.emptyLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                <View style={[styles.emptyCard, { borderColor: accentColor }]}>
+                  <Text style={[styles.emptyLabel, { color: C.text, fontFamily: 'SpaceMono' }]}>
                     ADD A GUIDE FIRST
                   </Text>
                 </View>
@@ -420,6 +515,75 @@ export default function StudyScreen() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Generate Flashcards Modal */}
+      <Modal transparent visible={addFlashcardsVisible} animationType="none" onRequestClose={hideAddFlashcards}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.overlay} onPress={generatingFlashcards ? undefined : hideAddFlashcards}>
+            <Animated.View
+              style={[
+                styles.sheet,
+                { backgroundColor: C.surface },
+                { transform: [{ translateY: flashcardSlideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] },
+              ]}
+            >
+              <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: C.text }]}>Generate Flashcards</Text>
+                {!generatingFlashcards && (
+                  <Pressable onPress={hideAddFlashcards}>
+                    <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
+                {generatingFlashcards ? (
+                  <View style={styles.generatingState}>
+                    <Text style={[styles.generatingText, { color: C.textMuted, fontFamily: 'SpaceMono', marginBottom: 16 }]}>
+                      GENERATING FLASHCARDS...
+                    </Text>
+                    {generateLog.map((line, i) => (
+                      <Text key={i} style={[styles.generatingText, { color: i === generateLog.length - 1 ? accentColor : C.textMuted, fontFamily: 'SpaceMono', marginBottom: 4 }]}>
+                        {i === generateLog.length - 1 ? '› ' : '✓ '}{line}
+                      </Text>
+                    ))}
+                  </View>
+                ) : (
+                  <>
+                    {flashcardError && (
+                      <Text style={[styles.errorText, { color: '#e05c5c', marginBottom: 14 }]}>{flashcardError}</Text>
+                    )}
+                    <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>TITLE (optional)</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                      value={flashcardSetTitle}
+                      onChangeText={setFlashcardSetTitle}
+                      placeholder="e.g. Chapter 3 — Cloud Security"
+                      placeholderTextColor={C.textMuted}
+                    />
+                    <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>PASTE YOUR MATERIAL</Text>
+                    <TextInput
+                      style={[styles.input, styles.textArea, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                      value={flashcardSourceText}
+                      onChangeText={setFlashcardSourceText}
+                      placeholder="Paste notes, a study guide, or any text here..."
+                      placeholderTextColor={C.textMuted}
+                      multiline
+                      autoFocus
+                    />
+                    <Pressable
+                      onPress={generateFlashcards}
+                      style={[styles.submitBtn, { backgroundColor: accentColor, opacity: flashcardSourceText.trim() ? 1 : 0.4 }]}
+                    >
+                      <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Generate 15 Flashcards</Text>
+                    </Pressable>
+                  </>
+                )}
+              </ScrollView>
+            </Animated.View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -454,6 +618,9 @@ const styles = StyleSheet.create({
   emptyLabel: { fontSize: 10, letterSpacing: 1 },
   quizHint: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
   flashcardSetBlock: { marginBottom: 20 },
+  generatingState: { alignItems: 'center', paddingVertical: 40 },
+  generatingText: { fontSize: 11, letterSpacing: 1 },
+  errorText: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
   setTitle: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
   flipCardContainer: { marginBottom: 12, height: 160 },
   flipCard: {
@@ -470,7 +637,7 @@ const styles = StyleSheet.create({
   flipCardHint: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
   flipCardText: { fontSize: 16, lineHeight: 24, flex: 1 },
   flipCardExplanation: { fontSize: 12, marginTop: 10, lineHeight: 18 },
-  flipCardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 10 },
+  flipCardActions: { position: 'absolute', bottom: 14, right: 16, flexDirection: 'row', gap: 12 },
   flipCardActionIcon: { fontSize: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, maxHeight: '85%' },
