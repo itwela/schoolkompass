@@ -95,12 +95,15 @@ export default function QuizScreen() {
     setCurrentIndex(0);
     setSelected(null);
     setResults([]);
+    setQuestions([]);
     setQuizState('loading');
     setError(null);
     if (currentStudyGuide) {
+      let cancelled = false;
       generateQuestions(currentStudyGuide.text)
-        .then((qs) => { setQuestions(qs); setQuizState('question'); })
-        .catch((e) => { setError(e.message ?? 'Failed'); setQuizState('question'); });
+        .then((qs) => { if (!cancelled) { setQuestions(qs); setQuizState('question'); } })
+        .catch((e) => { if (!cancelled) { setError(e.message ?? 'Failed'); setQuizState('question'); } });
+      return () => { cancelled = true; };
     }
   };
 
@@ -150,7 +153,7 @@ export default function QuizScreen() {
               <View
                 style={[
                   styles.progressFill,
-                  { backgroundColor: accentColor, width: `${(currentIndex / questions.length) * 100}%` },
+                  { backgroundColor: accentColor, width: `${((currentIndex + 1) / questions.length) * 100}%` },
                 ]}
               />
             </View>
