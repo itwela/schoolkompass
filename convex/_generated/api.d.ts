@@ -9,6 +9,7 @@
  */
 
 import type * as classes from "../classes.js";
+import type * as studyGuides from "../studyGuides.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +19,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   classes: typeof classes;
+  studyGuides: typeof studyGuides;
 }>;
 
 /**
