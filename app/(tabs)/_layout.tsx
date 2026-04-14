@@ -14,7 +14,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { currentStudyGuide } = useClass();
+  const { currentStudyGuide, currentFlashcardSetId } = useClass();
 
   
 
@@ -30,7 +30,7 @@ export default function TabLayout() {
             elevation: 0,
             borderRadius: 15,
             height: 70,
-            display: currentStudyGuide ? 'none' : 'flex',
+            display: currentStudyGuide || currentFlashcardSetId ? 'none' : 'flex',
             backgroundColor: useThemeColor({}, 'background'),
             shadowColor: '#000',
             shadowOffset: {
@@ -50,7 +50,7 @@ export default function TabLayout() {
             elevation: 8,
             borderRadius: 15,
             height: 70,
-            display: currentStudyGuide ? 'none' : 'flex',
+            display: currentStudyGuide || currentFlashcardSetId ? 'none' : 'flex',
             backgroundColor: useThemeColor({}, 'background'),
             marginHorizontal: 20,
             width: '90%',
@@ -60,16 +60,14 @@ export default function TabLayout() {
             left: '5%',
           },
         }),
-        tabBarInactiveTintColor: '#4A4A4A',
-        tabBarActiveTintColor: '#4A4A4A',
+        tabBarInactiveTintColor: useThemeColor({}, 'text'),
+        tabBarActiveTintColor: useThemeColor({}, 'text'),
       }}
       >
       <Tabs.Screen
-      
         name="(class)"
         options={{
-          title: 'Study',
-          
+          title: '',
           tabBarStyle: {
             paddingTop: 12,
             backgroundColor: useThemeColor({}, 'background'),
