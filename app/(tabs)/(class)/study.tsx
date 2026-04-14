@@ -172,6 +172,7 @@ export default function StudyScreen() {
   };
 
   const [activeTab, setActiveTab] = useState<Tab>('guides');
+  const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(new Set());
   const [addFlashcardsVisible, setAddFlashcardsVisible] = useState(false);
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [flashcardError, setFlashcardError] = useState<string | null>(null);
@@ -407,24 +408,45 @@ export default function StudyScreen() {
                 </Pressable>
               ) : (
                 <>
-                  {flashcardSets.map((set) => (
-                    <View key={set.id} style={styles.flashcardSetBlock}>
-                      {set.title && (
-                        <Text style={[styles.setTitle, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
-                          {set.title.toUpperCase()}
-                        </Text>
-                      )}
-                      {set.cards.filter((c) => !c.hidden).map((card) => (
-                        <FlipCard
-                          key={card.id}
-                          card={card}
-                          accentColor={accentColor}
-                          onToggleStar={() => toggleStar(set.id, card.id)}
-                          onHide={() => hideCard(set.id, card.id)}
-                        />
-                      ))}
-                    </View>
-                  ))}
+                  {flashcardSets.map((set) => {
+                    const isExpanded = expandedSetIds.has(set.id);
+                    const visibleCards = set.cards.filter((c) => !c.hidden);
+                    return (
+                      <View key={set.id} style={styles.flashcardSetBlock}>
+                        <Pressable
+                          onPress={() => {
+                            setExpandedSetIds((prev) => {
+                              const next = new Set(prev);
+                              next.has(set.id) ? next.delete(set.id) : next.add(set.id);
+                              return next;
+                            });
+                          }}
+                          style={[styles.setTitleRow, { borderColor: isExpanded ? accentColor : C.border }]}
+                        >
+                          <View>
+                            <Text style={[styles.setTitleText, { color: C.text }]}>
+                              {set.title || 'Flashcard Set'}
+                            </Text>
+                            <Text style={[styles.setTitleMeta, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                              {visibleCards.length} CARDS
+                            </Text>
+                          </View>
+                          <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
+                            {isExpanded ? '˄' : '˅'}
+                          </Text>
+                        </Pressable>
+                        {isExpanded && visibleCards.map((card) => (
+                          <FlipCard
+                            key={card.id}
+                            card={card}
+                            accentColor={accentColor}
+                            onToggleStar={() => toggleStar(set.id, card.id)}
+                            onHide={() => hideCard(set.id, card.id)}
+                          />
+                        ))}
+                      </View>
+                    );
+                  })}
                   <Pressable onPress={showAddFlashcards} style={[styles.addRowBtn, { borderColor: C.border }]}>
                     <Text style={[styles.addRowBtnText, { color: C.textMuted }]}>+ Generate Flashcards</Text>
                   </Pressable>
@@ -617,11 +639,14 @@ const styles = StyleSheet.create({
   emptyPlus: { fontSize: 22 },
   emptyLabel: { fontSize: 10, letterSpacing: 1 },
   quizHint: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
-  flashcardSetBlock: { marginBottom: 20 },
+  flashcardSetBlock: { marginBottom: 12 },
+  setTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 10 },
+  setTitleText: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  setTitleMeta: { fontSize: 9, letterSpacing: 1 },
+  setTitleChevron: { fontSize: 18 },
   generatingState: { alignItems: 'center', paddingVertical: 40 },
   generatingText: { fontSize: 11, letterSpacing: 1 },
   errorText: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
-  setTitle: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
   flipCardContainer: { marginBottom: 12, height: 160 },
   flipCard: {
     position: 'absolute',
