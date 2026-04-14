@@ -461,15 +461,15 @@ export default function StudyScreen() {
                             </Text>
                           </View>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                            <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
+                              {isExpanded ? '˄' : '˅'}
+                            </Text>
                             <Pressable
                               onPress={() => showConfirm({ type: 'delete-set', setId: set.id, title: set.title || 'Flashcard Set' })}
                               hitSlop={10}
                             >
-                              <Text style={{ color: '#e05c5c', fontSize: 18 }}>✕</Text>
+                              <Text style={{ color: '#e05c5c', fontSize: 13 }}>✕</Text>
                             </Pressable>
-                            <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
-                              {isExpanded ? '˄' : '˅'}
-                            </Text>
                           </View>
                         </Pressable>
                         {isExpanded && visibleCards.map((card) => (
