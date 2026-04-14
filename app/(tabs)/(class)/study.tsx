@@ -465,7 +465,7 @@ export default function StudyScreen() {
                               onPress={() => showConfirm({ type: 'delete-set', setId: set.id, title: set.title || 'Flashcard Set' })}
                               hitSlop={10}
                             >
-                              <Text style={{ color: '#e05c5c', fontSize: 16 }}>⊘</Text>
+                              <Text style={{ color: '#e05c5c', fontSize: 18 }}>✕</Text>
                             </Pressable>
                             <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
                               {isExpanded ? '˄' : '˅'}
