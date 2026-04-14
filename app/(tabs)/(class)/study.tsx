@@ -45,9 +45,13 @@ type FlashcardSet = {
 function FlipCard({
   card,
   accentColor,
+  onToggleStar,
+  onHide,
 }: {
   card: Flashcard;
   accentColor: string;
+  onToggleStar: () => void;
+  onHide: () => void;
 }) {
   const { theme } = useTheme();
   const C = Colors[theme];
@@ -72,6 +76,19 @@ function FlipCard({
   const frontRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
   const backRotate = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] });
 
+  const Actions = () => (
+    <View style={styles.flipCardActions}>
+      <Pressable onPress={onToggleStar} hitSlop={10}>
+        <Text style={[styles.flipCardActionIcon, { color: card.starred ? accentColor : C.textMuted }]}>
+          {card.starred ? '★' : '☆'}
+        </Text>
+      </Pressable>
+      <Pressable onPress={onHide} hitSlop={10}>
+        <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✕</Text>
+      </Pressable>
+    </View>
+  );
+
   return (
     <Pressable onPress={flip} style={styles.flipCardContainer}>
       {/* Front */}
@@ -84,6 +101,7 @@ function FlipCard({
       >
         <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>QUESTION</Text>
         <Text style={[styles.flipCardText, { color: C.text }]}>{card.question}</Text>
+        <Actions />
       </Animated.View>
 
       {/* Back */}
@@ -100,6 +118,7 @@ function FlipCard({
         {card.explanation ? (
           <Text style={[styles.flipCardExplanation, { color: C.textMuted }]}>{card.explanation}</Text>
         ) : null}
+        <Actions />
       </Animated.View>
     </Pressable>
   );
@@ -120,7 +139,25 @@ export default function StudyScreen() {
   const accentColor = C.accentGreen;
 
   const { studyGuides, loading: guidesLoading, addStudyGuide } = useStudyGuidesLocal(classId);
-  const { flashcardSets, loading: flashcardsLoading } = useFlashcardSetsLocal(classId);
+  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet } = useFlashcardSetsLocal(classId);
+
+  const toggleStar = async (setId: string, cardId: string) => {
+    const set = flashcardSets.find((s) => s.id === setId);
+    if (!set) return;
+    await updateFlashcardSet({
+      ...set,
+      cards: set.cards.map((c) => c.id === cardId ? { ...c, starred: !c.starred } : c),
+    });
+  };
+
+  const hideCard = async (setId: string, cardId: string) => {
+    const set = flashcardSets.find((s) => s.id === setId);
+    if (!set) return;
+    await updateFlashcardSet({
+      ...set,
+      cards: set.cards.map((c) => c.id === cardId ? { ...c, hidden: true } : c),
+    });
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>('guides');
   const [addGuideVisible, setAddGuideVisible] = useState(false);
@@ -161,6 +198,14 @@ export default function StudyScreen() {
     }
   };
 
+  const handleBack = () => {
+    if (activeTab !== 'guides') {
+      setActiveTab('guides');
+    } else {
+      router.back();
+    }
+  };
+
   const openGuide = (guide: any) => {
     setCurrentStudyGuide(guide);
     router.push('/(tabs)/(class)/reader');
@@ -186,7 +231,7 @@ export default function StudyScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable onPress={handleBack} hitSlop={12}>
             <Text style={[styles.backArrow, { color: accentColor }]}>‹</Text>
           </Pressable>
           <Text style={[styles.headerTitle, { color: C.text }]} numberOfLines={1}>
@@ -279,7 +324,13 @@ export default function StudyScreen() {
                       </Text>
                     )}
                     {set.cards.filter((c) => !c.hidden).map((card) => (
-                      <FlipCard key={card.id} card={card} accentColor={accentColor} />
+                      <FlipCard
+                        key={card.id}
+                        card={card}
+                        accentColor={accentColor}
+                        onToggleStar={() => toggleStar(set.id, card.id)}
+                        onHide={() => hideCard(set.id, card.id)}
+                      />
                     ))}
                   </View>
                 ))
@@ -417,8 +468,10 @@ const styles = StyleSheet.create({
   },
   flipCardBack: { position: 'absolute', top: 0, left: 0 },
   flipCardHint: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
-  flipCardText: { fontSize: 16, lineHeight: 24 },
+  flipCardText: { fontSize: 16, lineHeight: 24, flex: 1 },
   flipCardExplanation: { fontSize: 12, marginTop: 10, lineHeight: 18 },
+  flipCardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 10 },
+  flipCardActionIcon: { fontSize: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, maxHeight: '85%' },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
