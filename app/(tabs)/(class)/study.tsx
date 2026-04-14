@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
   sheetBody: { paddingHorizontal: 24 },
   inputLabel: { fontSize: 9, letterSpacing: 1, marginBottom: 6 },
   input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 15 },
-  textArea: { height: 220, textAlignVertical: 'top' },
+  textArea: { height: 130, textAlignVertical: 'top' },
   submitBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16, marginBottom: 8 },
   submitBtnText: { fontSize: 16, fontWeight: '600' },
 });
