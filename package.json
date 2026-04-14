@@ -50,7 +50,8 @@
     "react-native-track-player": "^4.1.1",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "replicate": "^1.0.1"
+    "replicate": "^1.0.1",
+    "expo-speech": "~13.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
