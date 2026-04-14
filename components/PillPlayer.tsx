@@ -48,6 +48,7 @@ export default function PillPlayer({ text }: { text: string }) {
   };
 
   const handlePlayStop = () => {
+    if (!text.trim()) return;
     if (playerState === 'playing') {
       Speech.stop();
       setPlayerState('idle');
