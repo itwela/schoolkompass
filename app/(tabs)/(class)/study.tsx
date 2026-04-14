@@ -272,7 +272,7 @@ export default function StudyScreen() {
     setGenerateLog(['Calling AI...']);
     try {
       const raw = await openRouterChat({
-        model: 'google/gemma-3-27b-it:free',
+        model: 'google/gemini-flash-1.5-8b',
         messages: [
           {
             role: 'system',
