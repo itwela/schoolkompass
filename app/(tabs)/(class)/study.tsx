@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   flipCardHint: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
   flipCardText: { fontSize: 16, lineHeight: 24, flex: 1 },
   flipCardExplanation: { fontSize: 12, marginTop: 10, lineHeight: 18 },
-  flipCardActions: { position: 'absolute', bottom: 14, right: 16, flexDirection: 'row', gap: 12 },
+  flipCardActions: { position: 'absolute', bottom: 14, right: 16, flexDirection: 'row', gap: 12, alignItems: 'center' },
   flipCardActionIcon: { fontSize: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, maxHeight: '85%' },
