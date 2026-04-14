@@ -1,6 +1,7 @@
 // app/(tabs)/(class)/study.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -162,13 +163,20 @@ export default function StudyScreen() {
     });
   };
 
-  const hideCard = async (setId: string, cardId: string) => {
-    const set = flashcardSets.find((s) => s.id === setId);
-    if (!set) return;
-    await updateFlashcardSet({
-      ...set,
-      cards: set.cards.map((c) => c.id === cardId ? { ...c, hidden: true } : c),
-    });
+  const hideCard = (setId: string, cardId: string) => {
+    Alert.alert('Hide card?', 'This card will be removed from your deck.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Hide', style: 'destructive', onPress: async () => {
+          const set = flashcardSets.find((s) => s.id === setId);
+          if (!set) return;
+          await updateFlashcardSet({
+            ...set,
+            cards: set.cards.map((c) => c.id === cardId ? { ...c, hidden: true } : c),
+          });
+        },
+      },
+    ]);
   };
 
   const [activeTab, setActiveTab] = useState<Tab>('guides');
