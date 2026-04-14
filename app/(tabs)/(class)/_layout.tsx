@@ -6,7 +6,6 @@ export default function ClassLayout() {
     <Stack screenOptions={{ gestureEnabled: false, headerShown: false }}>
       <Stack.Screen name="chooseclass" />
       <Stack.Screen name="study" />
-      <Stack.Screen name="read-listen" />
       <Stack.Screen name="reader" />
       <Stack.Screen name="quiz-screen" />
     </Stack>

@@ -99,11 +99,9 @@ export default function QuizScreen() {
     setQuizState('loading');
     setError(null);
     if (currentStudyGuide) {
-      let cancelled = false;
       generateQuestions(currentStudyGuide.text)
-        .then((qs) => { if (!cancelled) { setQuestions(qs); setQuizState('question'); } })
-        .catch((e) => { if (!cancelled) { setError(e.message ?? 'Failed'); setQuizState('question'); } });
-      return () => { cancelled = true; };
+        .then((qs) => { setQuestions(qs); setQuizState('question'); })
+        .catch((e) => { setError(e.message ?? 'Failed'); setQuizState('question'); });
     }
   };
 
