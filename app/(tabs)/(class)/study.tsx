@@ -1,5 +1,5 @@
 // app/(tabs)/(class)/study.tsx
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -53,6 +53,10 @@ function FlipCard({
   const C = Colors[theme];
   const flipAnim = useRef(new Animated.Value(0)).current;
   const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    return () => { flipAnim.stopAnimation(); };
+  }, []);
 
   const flip = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,6 +126,7 @@ export default function StudyScreen() {
   const [addGuideVisible, setAddGuideVisible] = useState(false);
   const [newGuideTitle, setNewGuideTitle] = useState('');
   const [newGuideContent, setNewGuideContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const showAddGuide = () => {
@@ -140,15 +145,20 @@ export default function StudyScreen() {
   };
 
   const handleAddGuide = async () => {
-    if (!newGuideTitle.trim() || !newGuideContent.trim()) return;
-    await addStudyGuide({
-      id: Date.now().toString(),
-      title: newGuideTitle.trim(),
-      text: newGuideContent.trim(),
-      audioFile: null,
-      lastModified: new Date().toISOString(),
-    });
-    hideAddGuide();
+    if (submitting || !newGuideTitle.trim() || !newGuideContent.trim()) return;
+    setSubmitting(true);
+    try {
+      await addStudyGuide({
+        id: Date.now().toString(),
+        title: newGuideTitle.trim(),
+        text: newGuideContent.trim(),
+        audioFile: null,
+        lastModified: new Date().toISOString(),
+      });
+      hideAddGuide();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openGuide = (guide: any) => {
@@ -280,7 +290,9 @@ export default function StudyScreen() {
           {/* ── Quiz Tab ── */}
           {activeTab === 'quiz' && (
             <View>
-              {studyGuides.length === 0 ? (
+              {guidesLoading ? (
+                <SkeletonCard height={72} />
+              ) : studyGuides.length === 0 ? (
                 <View style={[styles.emptyCard, { borderColor: C.border }]}>
                   <Text style={[styles.emptyLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
                     ADD A GUIDE FIRST
