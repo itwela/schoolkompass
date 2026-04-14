@@ -1,14 +1,14 @@
+// app/(tabs)/(class)/_layout.tsx
 import { Stack } from 'expo-router';
 
 export default function ClassLayout() {
   return (
-    <Stack
-    screenOptions={{
-      gestureEnabled: false,
-    }}>
-      <Stack.Screen name="chooseclass" options={{ headerShown: false }} />
-      <Stack.Screen name="study" options={{ headerShown: false }} />
-      <Stack.Screen name="read-listen" options={{ headerShown: false }} />
+    <Stack screenOptions={{ gestureEnabled: false, headerShown: false }}>
+      <Stack.Screen name="chooseclass" />
+      <Stack.Screen name="study" />
+      <Stack.Screen name="read-listen" />
+      <Stack.Screen name="reader" />
+      <Stack.Screen name="quiz-screen" />
     </Stack>
   );
 }
