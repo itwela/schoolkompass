@@ -1,36 +1,46 @@
-const tintColorLight = '#0a7ea480'; // Teal
-const tintColorDark = '#3bc1db80'; // Softer teal for dark mode with 50% opacity
-const opaqueGreyLight = 'rgba(0, 0, 0, 0.05)'; // Light grey for subtle contrast
-const opaqueGreyDark = 'rgba(255, 255, 255, 0.10)'; // Soft white for dark mode contrast
-
-const highlightedColorLight = '#F4A261'; // Warm, orange-tan (Pairs well with teal)
-const highlightedColorDark = '#E76F5180'; // Deep coral (Looks great in dark mode)
+// constants/Colors.ts
 
 export const Colors = {
-  light: {
-    text: '#1B3A4B', // Deep navy for better contrast with white
-    background: '#F8F9FA', // Soft white for less strain
-    tint: tintColorLight,
-    icon: '#6B7280', // Neutral grey
-    tabIconDefault: '#94A3B8', // Subtle blue-grey
-    tabIconSelected: tintColorLight,
-    audioControlTextInactive: '#6B7280',
-    audioControlTextActive: '#1B3A4B',
-    teal: tintColorLight,
-    fadedGrey: opaqueGreyLight,
-    highlight: highlightedColorLight
-  },
   dark: {
-    text: '#EDEDED', // Softer white for readability
-    background: '#121417', // Deep charcoal, not pure black
-    tint: tintColorDark,
-    icon: '#A1A1AA', // Softer grey
-    tabIconDefault: '#767676', // Medium grey
-    tabIconSelected: tintColorDark,
-    audioControlTextInactive: '#A1A1AA',
+    bg: '#0a0f0a',
+    surface: '#121a12',
+    border: 'rgba(144,208,96,0.15)',
+    accentGreen: '#90d060',
+    accentGold: '#e8aa40',
+    text: '#f0ead8',
+    textMuted: 'rgba(240,234,216,0.4)',
+    // legacy keys used by existing hooks/components
+    background: '#0a0f0a',
+    tint: '#90d060',
+    teal: '#90d060',
+    fadedGrey: 'rgba(144,208,96,0.08)',
+    highlight: 'rgba(144,208,96,0.2)',
+    buttonText: '#0a0f0a',
+    icon: '#f0ead8',
+    tabIconDefault: 'rgba(240,234,216,0.4)',
+    tabIconSelected: '#90d060',
+    audioControlTextInactive: 'rgba(240,234,216,0.4)',
+    audioControlTextActive: '#0a0f0a',
+  },
+  light: {
+    bg: '#f8f5f0',
+    surface: '#ffffff',
+    border: 'rgba(0,0,0,0.08)',
+    accentGreen: '#5eaa64',
+    accentGold: '#d46b1a',
+    text: '#1a1a1a',
+    textMuted: 'rgba(0,0,0,0.4)',
+    // legacy keys
+    background: '#f8f5f0',
+    tint: '#5eaa64',
+    teal: '#5eaa64',
+    fadedGrey: 'rgba(0,0,0,0.06)',
+    highlight: 'rgba(94,170,100,0.15)',
+    buttonText: '#ffffff',
+    icon: '#1a1a1a',
+    tabIconDefault: 'rgba(0,0,0,0.4)',
+    tabIconSelected: '#5eaa64',
+    audioControlTextInactive: 'rgba(0,0,0,0.4)',
     audioControlTextActive: '#ffffff',
-    teal: tintColorDark,
-    fadedGrey: opaqueGreyDark,
-    highlight: highlightedColorDark,
   },
 };
