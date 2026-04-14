@@ -9,6 +9,7 @@
  */
 
 import type * as classes from "../classes.js";
+import type * as flashcardSets from "../flashcardSets.js";
 import type * as studyGuides from "../studyGuides.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   classes: typeof classes;
+  flashcardSets: typeof flashcardSets;
   studyGuides: typeof studyGuides;
 }>;
 
