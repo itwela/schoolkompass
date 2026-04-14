@@ -6,11 +6,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
 import { ClassProvider } from '@/contexts/ClassContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
+
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 
 function AppContent() {
   const { theme } = useTheme();
@@ -40,8 +43,10 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <ConvexProvider client={convex}>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </ConvexProvider>
   );
 }
