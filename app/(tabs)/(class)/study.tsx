@@ -242,7 +242,7 @@ export default function StudyScreen() {
     setGenerateLog(['Calling AI...']);
     try {
       const raw = await openRouterChat({
-        model: 'meta-llama/llama-3.1-8b-instruct:free',
+        model: 'openai/gpt-oss-20b:free',
         messages: [
           {
             role: 'system',
