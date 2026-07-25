@@ -125,19 +125,31 @@ export const processDocuments = action({
             console.error("Skipping flashcard item with invalid question", c);
             continue;
           }
+          const answers = Array.isArray(c.answers)
+            ? c.answers.filter((a: unknown) => typeof a === "string" && a.trim())
+            : typeof c.answers === "string" && c.answers.trim()
+              ? [c.answers]
+              : [];
+          if (answers.length === 0) {
+            console.error("Skipping flashcard item with invalid answers", c);
+            continue;
+          }
+          const explanation = typeof c.explanation === "string" ? c.explanation : "";
           const imageUrl = await cropAndStoreUrl(ctx, allPages, c.diagramRef);
           cards.push({
             id: `${Date.now()}-${i}`,
             question: c.question,
-            answers: Array.isArray(c.answers) ? c.answers : [c.answers],
-            explanation: c.explanation ?? "",
+            answers,
+            explanation,
             starred: false,
             hidden: false,
             imageUrl,
           });
         }
         if (cards.length === 0) {
-          throw new Error("Model response contained no valid flashcards after validation");
+          throw new Error(
+            `All ${parsed.length} generated flashcards were invalid — model output did not match the expected shape`
+          );
         }
         const docId = await ctx.runMutation(api.flashcardSets.add, {
           classId,
@@ -168,17 +180,24 @@ export const processDocuments = action({
             continue;
           }
           const imageUrl = await cropAndStoreUrl(ctx, allPages, q.diagramRef);
+          const correctAnswers = (q.correctAnswers as unknown[]).filter(
+            (a: unknown): a is string => typeof a === "string"
+          );
+          const type: "single" | "multi" = q.type === "multi" ? "multi" : "single";
+          const selectCount = type === "multi" ? Math.max(1, correctAnswers.length) : 1;
           questions.push({
             question: q.question,
             options: q.options,
-            correctAnswers: q.correctAnswers,
-            type: q.type === "multi" ? "multi" : "single",
-            selectCount: q.selectCount ?? 1,
+            correctAnswers,
+            type,
+            selectCount,
             imageUrl,
           });
         }
         if (questions.length === 0) {
-          throw new Error("Model response contained no valid quiz questions after validation");
+          throw new Error(
+            `All ${parsed.length} generated quiz questions were invalid — model output did not match the expected shape`
+          );
         }
         const docId = await ctx.runMutation(api.quizzes.add, {
           classId,
