@@ -9,6 +9,8 @@ export const Colors = {
     accentGold: '#e8aa40',
     text: '#f0ead8',
     textMuted: 'rgba(240,234,216,0.4)',
+    error: '#e05c5c',
+    success: '#4caf50',
     // legacy keys used by existing hooks/components
     background: '#0a0f0a',
     tint: '#90d060',
@@ -30,6 +32,8 @@ export const Colors = {
     accentGold: '#d46b1a',
     text: '#1a1a1a',
     textMuted: 'rgba(0,0,0,0.4)',
+    error: '#c94c4c',
+    success: '#3d8b42',
     // legacy keys
     background: '#f8f5f0',
     tint: '#5eaa64',
