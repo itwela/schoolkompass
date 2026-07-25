@@ -1,6 +1,6 @@
 // components/ui/Sheet.tsx
 import { useEffect, useRef, useState, ReactNode } from "react";
-import { Animated, Modal, Pressable, StyleSheet, View } from "react-native";
+import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Colors } from "@/constants/Colors";
 
@@ -34,14 +34,16 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Animated.View
-          style={[styles.sheet, { backgroundColor: C.surface, transform: [{ translateY }] }]}
-          onStartShouldSetResponder={() => true}
-        >
-          {children}
-        </Animated.View>
-      </Pressable>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <Pressable style={styles.overlay} onPress={onClose}>
+          <Animated.View
+            style={[styles.sheet, { backgroundColor: C.surface, transform: [{ translateY }] }]}
+            onStartShouldSetResponder={() => true}
+          >
+            {children}
+          </Animated.View>
+        </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
