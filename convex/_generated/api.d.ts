@@ -9,6 +9,8 @@
  */
 
 import type * as classes from "../classes.js";
+import type * as documentIngestion from "../documentIngestion.js";
+import type * as files from "../files.js";
 import type * as flashcardSets from "../flashcardSets.js";
 import type * as lib_documentIngestion from "../lib/documentIngestion.js";
 import type * as lib_weakSpots from "../lib/weakSpots.js";
@@ -24,6 +26,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   classes: typeof classes;
+  documentIngestion: typeof documentIngestion;
+  files: typeof files;
   flashcardSets: typeof flashcardSets;
   "lib/documentIngestion": typeof lib_documentIngestion;
   "lib/weakSpots": typeof lib_weakSpots;
