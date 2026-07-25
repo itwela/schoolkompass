@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/Colors';
+import { Pill } from '@/components/ui/Pill';
 
 type ClassCardProps = {
   name: string;
@@ -42,16 +43,22 @@ export default function ClassCard({
       <View style={styles.body}>
         <View style={styles.topRow}>
           <View style={styles.titleBlock}>
-            <Text style={[styles.name, { color: C.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.name, { color: C.text, fontFamily: 'InstrumentSerif_400Regular' }]}
+              numberOfLines={1}
+            >
               {name}
             </Text>
-            <Text style={[styles.description, { color: C.textMuted, fontFamily: 'SpaceMono' }]} numberOfLines={1}>
+            <Text
+              style={[styles.description, { color: C.textMuted, fontFamily: 'HankenGrotesk_400Regular' }]}
+              numberOfLines={1}
+            >
               {description}
             </Text>
           </View>
           {guideCount > 0 && (
             <View style={[styles.chip, { borderColor: accentColor }]}>
-              <Text style={[styles.chipText, { color: accentColor, fontFamily: 'SpaceMono' }]}>
+              <Text style={[styles.chipText, { color: accentColor, fontFamily: 'JetBrainsMono_400Regular' }]}>
                 {guideCount} {guideCount === 1 ? 'guide' : 'guides'}
               </Text>
             </View>
@@ -60,17 +67,9 @@ export default function ClassCard({
 
         <View style={styles.bottomRow}>
           <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: hasGuides ? `${accentColor}18` : C.fadedGrey }]}>
-              <Text style={[styles.badgeText, { color: hasGuides ? accentColor : C.textMuted }]}>GUIDES</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: hasFlashcards ? `${accentColor}18` : C.fadedGrey }]}>
-              <Text style={[styles.badgeText, { color: hasFlashcards ? accentColor : C.textMuted }]}>
-                FLASHCARDS
-              </Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: hasQuiz ? `${accentColor}18` : C.fadedGrey }]}>
-              <Text style={[styles.badgeText, { color: hasQuiz ? accentColor : C.textMuted }]}>QUIZ</Text>
-            </View>
+            <Pill label="GUIDES" active={hasGuides} accentColor={accentColor} />
+            <Pill label="FLASHCARDS" active={hasFlashcards} accentColor={accentColor} />
+            <Pill label="QUIZ" active={hasQuiz} accentColor={accentColor} />
           </View>
           <Pressable
             onPress={onDelete}
@@ -114,12 +113,11 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
   },
   description: {
-    fontSize: 10,
-    letterSpacing: 0.5,
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
   chip: {
     borderWidth: 1,
@@ -139,16 +137,6 @@ const styles = StyleSheet.create({
   badges: {
     flexDirection: 'row',
     gap: 4,
-  },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 3,
-  },
-  badgeText: {
-    fontSize: 8,
-    letterSpacing: 0.5,
-    fontFamily: 'SpaceMono',
   },
   trash: {
     padding: 4,
