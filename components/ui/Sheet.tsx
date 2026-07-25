@@ -1,5 +1,5 @@
 // components/ui/Sheet.tsx
-import { useEffect, useRef, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode } from "react";
 import { Animated, Modal, Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Colors } from "@/constants/Colors";
@@ -11,16 +11,29 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
   const { theme } = useTheme();
   const C = Colors[theme];
   const slideAnim = useRef(new Animated.Value(0)).current;
+  // Keeps the Modal mounted until the closing spring's callback fires — RN's Modal
+  // unmounts itself the instant `visible` goes false, which would otherwise cut the
+  // close animation off before it can play.
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     slideAnim.stopAnimation();
-    Animated.spring(slideAnim, { toValue: visible ? 1 : 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+    if (visible) {
+      setMounted(true);
+      Animated.spring(slideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+    } else {
+      Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(({ finished }) => {
+        // If this close was interrupted (e.g. a reopen mid-animation stopped it early),
+        // `finished` is false — don't unmount out from under the new opening spring.
+        if (finished) setMounted(false);
+      });
+    }
   }, [visible]);
 
   const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Animated.View
           style={[styles.sheet, { backgroundColor: C.surface, transform: [{ translateY }] }]}
