@@ -24,6 +24,8 @@ import { useWeakSpots } from '@/hooks/useWeakSpots';
 import { openRouterChat } from '@/constants/clients/openrouterClient';
 import { Sheet } from '@/components/ui/Sheet';
 import { Button } from '@/components/ui/Button';
+import { useDocumentUpload } from '@/hooks/useDocumentUpload';
+import { ProgressSteps } from '@/components/ProgressSteps';
 
 type Tab = 'guides' | 'flashcards' | 'quiz';
 
@@ -324,6 +326,13 @@ export default function StudyScreen() {
   const [flashcardSourceText, setFlashcardSourceText] = useState('');
   const [flashcardSetTitle, setFlashcardSetTitle] = useState('');
 
+  const { pickAndUpload, uploading: docUploading, currentStep: docStep, error: docError } = useDocumentUpload();
+
+  const handleUploadFlashcards = async () => {
+    const result = await pickAndUpload('flashcards', classId, flashcardSetTitle);
+    if (result) hideAddFlashcards();
+  };
+
   const showAddFlashcards = () => {
     setFlashcardError(null);
     setGenerateLog([]);
@@ -393,6 +402,11 @@ export default function StudyScreen() {
   const [newGuideTitle, setNewGuideTitle] = useState('');
   const [newGuideContent, setNewGuideContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const handleUploadGuide = async () => {
+    const result = await pickAndUpload('guide', classId, newGuideTitle);
+    if (result) hideAddGuide();
+  };
 
   const showAddGuide = () => {
     setAddGuideVisible(true);
@@ -822,10 +836,25 @@ export default function StudyScreen() {
             <Button
               label="Add Guide"
               onPress={handleAddGuide}
-              disabled={submitting || !newGuideTitle.trim() || !newGuideContent.trim()}
+              disabled={submitting || docUploading || !newGuideTitle.trim() || !newGuideContent.trim()}
               accentColor={accentColor}
             />
           </View>
+          <View style={{ marginTop: 8, marginBottom: 8 }}>
+            <Button
+              label="Upload a document instead"
+              onPress={handleUploadGuide}
+              variant="muted"
+              disabled={docUploading || submitting}
+              accentColor={accentColor}
+            />
+          </View>
+          {docUploading && (
+            <View style={{ marginTop: 12 }}>
+              <ProgressSteps steps={['Uploading document...', 'Reading document...']} currentStep={docStep} />
+            </View>
+          )}
+          {docError && <Text style={[styles.errorText, { color: C.error, marginTop: 12 }]}>{docError}</Text>}
         </ScrollView>
       </Sheet>
 
@@ -1010,10 +1039,25 @@ export default function StudyScreen() {
                 <Button
                   label="Generate 15 Flashcards"
                   onPress={generateFlashcards}
-                  disabled={generatingFlashcards || !flashcardSourceText.trim()}
+                  disabled={generatingFlashcards || docUploading || !flashcardSourceText.trim()}
                   accentColor={accentColor}
                 />
               </View>
+              <View style={{ marginTop: 8, marginBottom: 8 }}>
+                <Button
+                  label="Upload a document instead"
+                  onPress={handleUploadFlashcards}
+                  variant="muted"
+                  disabled={docUploading || generatingFlashcards}
+                  accentColor={accentColor}
+                />
+              </View>
+              {docUploading && (
+                <View style={{ marginTop: 12 }}>
+                  <ProgressSteps steps={['Uploading document...', 'Reading document...']} currentStep={docStep} />
+                </View>
+              )}
+              {docError && <Text style={[styles.errorText, { color: C.error, marginTop: 12 }]}>{docError}</Text>}
             </>
           )}
         </ScrollView>
