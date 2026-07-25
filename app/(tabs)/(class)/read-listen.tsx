@@ -331,8 +331,9 @@ export default function ReadListenScreen() {
           <Text style={{
             textAlign: 'left',
             marginBottom: 10,
-            fontSize: 16 * textScale,
-            lineHeight: 24 * textScale,
+            fontFamily: 'HankenGrotesk_400Regular',
+            fontSize: 17 * textScale,
+            lineHeight: 28.9 * textScale,
             color: useThemeColor({}, 'text'),
             backgroundColor: text === highlightedText ? useThemeColor({}, 'highlight') : 'transparent',
             borderRightWidth: markedSegments.has(text) ? 10 : 0,
@@ -564,9 +565,9 @@ export default function ReadListenScreen() {
 const markdownStyles = StyleSheet.create({
   body: {
     color: '#1A1A1A',
-    fontFamily: 'Georgia',
-    fontSize: 16, // Base font size for all text
-    lineHeight: 24,
+    fontFamily: 'HankenGrotesk_400Regular',
+    fontSize: 17, // Base font size for all text
+    lineHeight: 28.9,
   },
   paragraph: {
     fontSize: 16, // Increased from 10
@@ -583,29 +584,24 @@ const markdownStyles = StyleSheet.create({
   },
   heading1: {
     fontSize: 28, // Larger size for main headings
-    color: '#000000',
-    fontWeight: '900',
-    marginBottom: 16,
-    marginTop: 24,
-    letterSpacing: -0.5,
-    fontFamily: 'Georgia',
+    color: '#5eaa64',
+    marginBottom: 8,
+    marginTop: 16,
+    fontFamily: 'InstrumentSerif_400Regular',
   },
   heading2: {
-    fontSize: 24, // Slightly smaller than h1
-    color: '#000000',
-    fontWeight: '700',
-    marginBottom: 14,
-    marginTop: 20,
-    letterSpacing: -0.3,
-    fontFamily: 'Georgia',
+    fontSize: 22, // Slightly smaller than h1
+    color: '#5eaa64',
+    marginBottom: 6,
+    marginTop: 14,
+    fontFamily: 'InstrumentSerif_400Regular',
   },
   heading3: {
-    fontSize: 20, // Slightly smaller than h2
-    color: '#000000',
-    fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 18,
-    fontFamily: 'Georgia',
+    fontSize: 19, // Slightly smaller than h2
+    color: '#5eaa64',
+    marginBottom: 4,
+    marginTop: 12,
+    fontFamily: 'InstrumentSerif_400Regular',
   },
   heading4: {
     // fontSize: 24,
@@ -667,23 +663,25 @@ const markdownStyles = StyleSheet.create({
     fontStyle: 'italic',
   },
   code_inline: {
-    fontFamily: 'SpaceMono',
+    fontFamily: 'JetBrainsMono_400Regular',
     backgroundColor: '#F5F5F5',
+    color: '#5eaa64',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 4,
-    fontSize: 18,
   },
   code_block: {
-    fontFamily: 'SpaceMono',
+    fontFamily: 'JetBrainsMono_400Regular',
     backgroundColor: '#F5F5F5',
+    color: '#5eaa64',
     padding: 24,
     borderRadius: 8,
     marginVertical: 28,
-    fontSize: 18,
-    lineHeight: 28,
   },
   fence: {
+    fontFamily: 'JetBrainsMono_400Regular',
+    backgroundColor: '#F5F5F5',
+    color: '#5eaa64',
     marginVertical: 28,
   },
   table: {
@@ -727,7 +725,7 @@ const markdownStyles = StyleSheet.create({
     marginVertical: 40,
   },
   strong: {
-    fontWeight: '700',
+    fontFamily: 'HankenGrotesk_600SemiBold',
     color: '#000000',
   },
   em: {

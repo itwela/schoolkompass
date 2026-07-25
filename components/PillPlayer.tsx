@@ -77,7 +77,7 @@ export default function PillPlayer({ text }: { text: string }) {
       >
         {/* Speed toggle */}
         <Pressable onPress={cycleSpeed} style={styles.speedBtn}>
-          <Text style={[styles.speedText, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+          <Text style={[styles.speedText, { color: C.textMuted, fontFamily: 'JetBrainsMono_400Regular' }]}>
             {speed}x
           </Text>
         </Pressable>
