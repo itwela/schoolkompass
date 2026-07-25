@@ -475,6 +475,11 @@ export default function StudyScreen() {
     router.push('/(tabs)/(class)/quiz-screen');
   };
 
+  const handleUploadQuiz = async () => {
+    const result = await pickAndUpload('quiz', classId);
+    if (result) setQuizText('');
+  };
+
   const openSavedQuiz = (quiz: { id: string; title: string; questions: any[] }) => {
     setSavedQuizToLoad({ id: quiz.id, title: quiz.title, questions: quiz.questions });
     router.push('/(tabs)/(class)/quiz-screen');
@@ -792,10 +797,26 @@ export default function StudyScreen() {
                   />
                   <Pressable
                     onPress={startQuizFromText}
-                    style={[styles.submitBtn, { backgroundColor: accentColor, opacity: quizText.trim() ? 1 : 0.4 }]}
+                    disabled={docUploading || !quizText.trim()}
+                    style={[styles.submitBtn, { backgroundColor: accentColor, opacity: docUploading || !quizText.trim() ? 0.4 : 1 }]}
                   >
                     <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Generate 10-Question Quiz</Text>
                   </Pressable>
+                  <View style={{ marginTop: 8, marginBottom: 8 }}>
+                    <Button
+                      label="Upload a document instead"
+                      onPress={handleUploadQuiz}
+                      variant="muted"
+                      disabled={docUploading}
+                      accentColor={accentColor}
+                    />
+                  </View>
+                  {docUploading && (
+                    <View style={{ marginTop: 12 }}>
+                      <ProgressSteps steps={['Uploading document...', 'Reading document...']} currentStep={docStep} />
+                    </View>
+                  )}
+                  {docError && <Text style={[styles.errorText, { color: C.error, marginTop: 12 }]}>{docError}</Text>}
                 </View>
               )}
 
