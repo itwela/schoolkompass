@@ -22,6 +22,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useStudyGuidesLocal, useFlashcardSetsLocal, useQuizzesLocal } from '@/hooks/useDataFetch';
 import { useWeakSpots } from '@/hooks/useWeakSpots';
 import { openRouterChat } from '@/constants/clients/openrouterClient';
+import { Sheet } from '@/components/ui/Sheet';
+import { Button } from '@/components/ui/Button';
 
 type Tab = 'guides' | 'flashcards' | 'quiz';
 
@@ -96,8 +98,8 @@ function FlipCard({
             { backfaceVisibility: 'hidden', transform: [{ rotateY: frontRotate }] },
           ]}
         >
-          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>QUESTION</Text>
-          <Text style={[styles.flipCardText, { color: accentColor }]}>{card.question}</Text>
+          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'JetBrainsMono_400Regular' }]}>QUESTION</Text>
+          <Text style={[styles.flipCardText, { color: accentColor, fontFamily: 'HankenGrotesk_400Regular' }]}>{card.question}</Text>
         </Animated.View>
 
         {/* Back */}
@@ -114,8 +116,8 @@ function FlipCard({
             { backfaceVisibility: 'hidden', transform: [{ rotateY: backRotate }] },
           ]}
         >
-          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>ANSWER</Text>
-          <Text style={[styles.flipCardText, { color: C.text }]}>{card.answers[0]}</Text>
+          <Text style={[styles.flipCardHint, { color: C.textMuted, fontFamily: 'JetBrainsMono_400Regular' }]}>ANSWER</Text>
+          <Text style={[styles.flipCardText, { color: C.text, fontFamily: 'HankenGrotesk_400Regular' }]}>{card.answers[0]}</Text>
           {card.explanation ? (
             <Text style={[styles.flipCardExplanation, { color: C.text }]}>{card.explanation}</Text>
           ) : null}
@@ -321,24 +323,18 @@ export default function StudyScreen() {
   const [generateLog, setGenerateLog] = useState<string[]>([]);
   const [flashcardSourceText, setFlashcardSourceText] = useState('');
   const [flashcardSetTitle, setFlashcardSetTitle] = useState('');
-  const flashcardSlideAnim = useRef(new Animated.Value(0)).current;
 
   const showAddFlashcards = () => {
-    flashcardSlideAnim.stopAnimation();
     setFlashcardError(null);
     setGenerateLog([]);
     setAddFlashcardsVisible(true);
-    Animated.spring(flashcardSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const hideAddFlashcards = () => {
-    flashcardSlideAnim.stopAnimation();
-    Animated.spring(flashcardSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
-      setAddFlashcardsVisible(false);
-      setFlashcardError(null);
-      setFlashcardSourceText('');
-      setFlashcardSetTitle('');
-    });
+    setAddFlashcardsVisible(false);
+    setFlashcardError(null);
+    setFlashcardSourceText('');
+    setFlashcardSetTitle('');
   };
 
   const generateFlashcards = async () => {
@@ -397,21 +393,15 @@ export default function StudyScreen() {
   const [newGuideTitle, setNewGuideTitle] = useState('');
   const [newGuideContent, setNewGuideContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const showAddGuide = () => {
-    slideAnim.stopAnimation();
     setAddGuideVisible(true);
-    Animated.spring(slideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const hideAddGuide = () => {
-    slideAnim.stopAnimation();
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
-      setAddGuideVisible(false);
-      setNewGuideTitle('');
-      setNewGuideContent('');
-    });
+    setAddGuideVisible(false);
+    setNewGuideTitle('');
+    setNewGuideContent('');
   };
 
   const handleAddGuide = async () => {
@@ -476,12 +466,6 @@ export default function StudyScreen() {
     router.push('/(tabs)/(class)/quiz-screen');
   };
 
-  // ── Shared sheet style ─────────────────────────────────────────────────────
-
-  const sheetStyle = {
-    transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }],
-  };
-
   const estimateReadTime = (text: string) => {
     const words = text.trim().split(/\s+/).length;
     return Math.max(1, Math.round(words / 200));
@@ -512,7 +496,7 @@ export default function StudyScreen() {
         {/* Weak Spots */}
         {weakSpots.length > 0 && (
           <View style={[weakSpotStyles.container, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[weakSpotStyles.heading, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+            <Text style={[weakSpotStyles.heading, { color: C.textMuted, fontFamily: 'JetBrainsMono_400Regular' }]}>
               YOU KEEP MISSING
             </Text>
             {weakSpots.map((spot) => (
@@ -807,47 +791,43 @@ export default function StudyScreen() {
         </ScrollView>
       </View>
 
-      {/* Add Guide Modal */}
-      <Modal transparent visible={addGuideVisible} animationType="none" onRequestClose={hideAddGuide}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <Pressable style={styles.overlay} onPress={hideAddGuide}>
-            <Animated.View style={[styles.sheet, { backgroundColor: C.surface }, sheetStyle]}>
-              <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: C.text }]}>Add Study Guide</Text>
-                <Pressable onPress={hideAddGuide}>
-                  <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
-                </Pressable>
-              </View>
-              <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
-                <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>TITLE</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
-                  value={newGuideTitle}
-                  onChangeText={setNewGuideTitle}
-                  placeholder="Chapter 1 — Threats & Attacks"
-                  placeholderTextColor={C.textMuted}
-                  autoFocus
-                />
-                <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>CONTENT</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
-                  value={newGuideContent}
-                  onChangeText={setNewGuideContent}
-                  placeholder="Paste your study guide text or markdown here..."
-                  placeholderTextColor={C.textMuted}
-                  multiline
-                />
-                <Pressable
-                  onPress={handleAddGuide}
-                  style={[styles.submitBtn, { backgroundColor: accentColor, opacity: newGuideTitle.trim() && newGuideContent.trim() ? 1 : 0.4 }]}
-                >
-                  <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Add Guide</Text>
-                </Pressable>
-              </ScrollView>
-            </Animated.View>
+      {/* Add Guide Sheet */}
+      <Sheet visible={addGuideVisible} onClose={hideAddGuide}>
+        <View style={styles.sheetHeader}>
+          <Text style={[styles.sheetTitle, { color: C.text }]}>Add Study Guide</Text>
+          <Pressable onPress={hideAddGuide}>
+            <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
           </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
+        </View>
+        <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
+          <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>TITLE</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+            value={newGuideTitle}
+            onChangeText={setNewGuideTitle}
+            placeholder="Chapter 1 — Threats & Attacks"
+            placeholderTextColor={C.textMuted}
+            autoFocus
+          />
+          <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>CONTENT</Text>
+          <TextInput
+            style={[styles.input, styles.textArea, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+            value={newGuideContent}
+            onChangeText={setNewGuideContent}
+            placeholder="Paste your study guide text or markdown here..."
+            placeholderTextColor={C.textMuted}
+            multiline
+          />
+          <View style={{ marginTop: 16, marginBottom: 8 }}>
+            <Button
+              label="Add Guide"
+              onPress={handleAddGuide}
+              disabled={submitting || !newGuideTitle.trim() || !newGuideContent.trim()}
+              accentColor={accentColor}
+            />
+          </View>
+        </ScrollView>
+      </Sheet>
 
       {/* Rename Modal */}
       <Modal transparent visible={!!renameTarget} animationType="none" onRequestClose={hideRename}>
@@ -980,74 +960,64 @@ export default function StudyScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Generate Flashcards Modal */}
-      <Modal transparent visible={addFlashcardsVisible} animationType="none" onRequestClose={hideAddFlashcards}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <Pressable style={styles.overlay} onPress={generatingFlashcards ? undefined : hideAddFlashcards}>
-            <Animated.View
-              style={[
-                styles.sheet,
-                { backgroundColor: C.surface },
-                { transform: [{ translateY: flashcardSlideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }] },
-              ]}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: C.text }]}>Generate Flashcards</Text>
-                {!generatingFlashcards && (
-                  <Pressable onPress={hideAddFlashcards}>
-                    <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
-                  </Pressable>
-                )}
-              </View>
+      {/* Generate Flashcards Sheet */}
+      <Sheet visible={addFlashcardsVisible} onClose={generatingFlashcards ? () => {} : hideAddFlashcards}>
+        <View style={styles.sheetHeader}>
+          <Text style={[styles.sheetTitle, { color: C.text }]}>Generate Flashcards</Text>
+          {!generatingFlashcards && (
+            <Pressable onPress={hideAddFlashcards}>
+              <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+            </Pressable>
+          )}
+        </View>
 
-              <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
-                {generatingFlashcards ? (
-                  <View style={styles.generatingState}>
-                    <Text style={[styles.generatingText, { color: C.textMuted, fontFamily: 'SpaceMono', marginBottom: 16 }]}>
-                      GENERATING FLASHCARDS...
-                    </Text>
-                    {generateLog.map((line, i) => (
-                      <Text key={i} style={[styles.generatingText, { color: i === generateLog.length - 1 ? accentColor : C.textMuted, fontFamily: 'SpaceMono', marginBottom: 4 }]}>
-                        {i === generateLog.length - 1 ? '› ' : '✓ '}{line}
-                      </Text>
-                    ))}
-                  </View>
-                ) : (
-                  <>
-                    {flashcardError && (
-                      <Text style={[styles.errorText, { color: '#e05c5c', marginBottom: 14 }]}>{flashcardError}</Text>
-                    )}
-                    <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>TITLE (optional)</Text>
-                    <TextInput
-                      style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
-                      value={flashcardSetTitle}
-                      onChangeText={setFlashcardSetTitle}
-                      placeholder="e.g. Chapter 3 — Cloud Security"
-                      placeholderTextColor={C.textMuted}
-                    />
-                    <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>PASTE YOUR MATERIAL</Text>
-                    <TextInput
-                      style={[styles.input, styles.textArea, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
-                      value={flashcardSourceText}
-                      onChangeText={setFlashcardSourceText}
-                      placeholder="Paste notes, a study guide, or any text here..."
-                      placeholderTextColor={C.textMuted}
-                      multiline
-                      autoFocus
-                    />
-                    <Pressable
-                      onPress={generateFlashcards}
-                      style={[styles.submitBtn, { backgroundColor: accentColor, opacity: flashcardSourceText.trim() ? 1 : 0.4 }]}
-                    >
-                      <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Generate 15 Flashcards</Text>
-                    </Pressable>
-                  </>
-                )}
-              </ScrollView>
-            </Animated.View>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
+        <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
+          {generatingFlashcards ? (
+            <View style={styles.generatingState}>
+              <Text style={[styles.generatingText, { color: C.textMuted, fontFamily: 'SpaceMono', marginBottom: 16 }]}>
+                GENERATING FLASHCARDS...
+              </Text>
+              {generateLog.map((line, i) => (
+                <Text key={i} style={[styles.generatingText, { color: i === generateLog.length - 1 ? accentColor : C.textMuted, fontFamily: 'SpaceMono', marginBottom: 4 }]}>
+                  {i === generateLog.length - 1 ? '› ' : '✓ '}{line}
+                </Text>
+              ))}
+            </View>
+          ) : (
+            <>
+              {flashcardError && (
+                <Text style={[styles.errorText, { color: '#e05c5c', marginBottom: 14 }]}>{flashcardError}</Text>
+              )}
+              <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>TITLE (optional)</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                value={flashcardSetTitle}
+                onChangeText={setFlashcardSetTitle}
+                placeholder="e.g. Chapter 3 — Cloud Security"
+                placeholderTextColor={C.textMuted}
+              />
+              <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>PASTE YOUR MATERIAL</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                value={flashcardSourceText}
+                onChangeText={setFlashcardSourceText}
+                placeholder="Paste notes, a study guide, or any text here..."
+                placeholderTextColor={C.textMuted}
+                multiline
+                autoFocus
+              />
+              <View style={{ marginTop: 16, marginBottom: 8 }}>
+                <Button
+                  label="Generate 15 Flashcards"
+                  onPress={generateFlashcards}
+                  disabled={generatingFlashcards || !flashcardSourceText.trim()}
+                  accentColor={accentColor}
+                />
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </Sheet>
     </SafeAreaView>
   );
 }
