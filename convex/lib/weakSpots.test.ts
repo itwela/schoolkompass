@@ -78,4 +78,26 @@ describe("computeWeakSpots", () => {
     const attempts: AttemptInput[] = [{ quizId: "quiz-unknown", wrongCount: 1, total: 5, takenAt: "2026-07-01T00:00:00Z" }];
     expect(computeWeakSpots(attempts, {})[0].title).toBe("quiz-unknown");
   });
+
+  it("excludes attempts with total: 0 from weak-spot aggregation", () => {
+    // A quiz with only zero-total attempts should be entirely excluded
+    const attempts: AttemptInput[] = [
+      { quizId: "quiz-1", wrongCount: 2, total: 0, takenAt: "2026-07-01T00:00:00Z" },
+    ];
+    expect(computeWeakSpots(attempts, titles)).toEqual([]);
+  });
+
+  it("excludes zero-total attempts when computing averages alongside valid attempts", () => {
+    // Zero-total attempts should be skipped; only valid attempts count
+    const attempts: AttemptInput[] = [
+      { quizId: "quiz-1", wrongCount: 2, total: 0, takenAt: "2026-07-01T00:00:00Z" }, // skip this
+      { quizId: "quiz-1", wrongCount: 5, total: 10, takenAt: "2026-07-02T00:00:00Z" }, // 50%, valid
+      { quizId: "quiz-1", wrongCount: 1, total: 10, takenAt: "2026-07-03T00:00:00Z" }, // 10%, valid
+    ];
+    const result = computeWeakSpots(attempts, titles);
+    expect(result).toHaveLength(1);
+    expect(result[0].wrongRate).toBeCloseTo(0.3, 5); // (50% + 10%) / 2
+    expect(result[0].attemptCount).toBe(2); // only 2 valid attempts
+    expect(result[0].latestWrongCount).toBe(1); // latest valid attempt
+  });
 });

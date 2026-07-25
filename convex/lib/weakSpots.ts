@@ -27,13 +27,17 @@ export function computeWeakSpots(
     const sorted = [...quizAttempts].sort(
       (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime()
     );
-    const rates = sorted.map((a) => a.wrongCount / a.total);
+    // Skip attempts with total <= 0 to avoid NaN and Infinity
+    const validAttempts = sorted.filter((a) => a.total > 0);
+    if (validAttempts.length === 0) continue;
+
+    const rates = validAttempts.map((a) => a.wrongCount / a.total);
     const avgWrongRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
 
     if (avgWrongRate <= 0) continue;
 
     let trend: WeakSpot["trend"] = null;
-    if (sorted.length >= 2) {
+    if (validAttempts.length >= 2) {
       const [latest, previous] = rates;
       trend = latest < previous ? "improving" : latest > previous ? "worsening" : "steady";
     }
@@ -42,9 +46,9 @@ export function computeWeakSpots(
       quizId,
       title: titleByQuizId[quizId] ?? quizId,
       wrongRate: avgWrongRate,
-      latestWrongCount: sorted[0].wrongCount,
-      latestTotal: sorted[0].total,
-      attemptCount: sorted.length,
+      latestWrongCount: validAttempts[0].wrongCount,
+      latestTotal: validAttempts[0].total,
+      attemptCount: validAttempts.length,
       trend,
     });
   }
