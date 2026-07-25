@@ -24,6 +24,13 @@ export const add = mutation({
   },
 });
 
+export const rename = mutation({
+  args: { id: v.id("studyGuides"), title: v.string() },
+  handler: async (ctx, { id, title }) => {
+    await ctx.db.patch(id, { title });
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("studyGuides") },
   handler: async (ctx, { id }) => {

@@ -10,10 +10,12 @@ const cardSchema = v.object({
   hidden: v.boolean(),
 });
 
-const quizItemSchema = v.object({
-  id: v.string(),
+const quizQuestionSchema = v.object({
   question: v.string(),
-  answer: v.string(),
+  options: v.array(v.string()),
+  correctAnswers: v.array(v.string()),
+  type: v.union(v.literal('single'), v.literal('multi')),
+  selectCount: v.number(),
 });
 
 export default defineSchema({
@@ -41,7 +43,17 @@ export default defineSchema({
   quizzes: defineTable({
     classId: v.string(),
     title: v.string(),
-    quizContent: v.array(quizItemSchema),
+    questions: v.array(quizQuestionSchema),
     lastModified: v.string(),
   }).index("by_classId", ["classId"]),
+
+  quizAttempts: defineTable({
+    quizId: v.string(),
+    classId: v.string(),
+    score: v.number(),
+    total: v.number(),
+    wrongCount: v.number(),
+    timeSeconds: v.number(),
+    takenAt: v.string(),
+  }).index("by_quizId", ["quizId"]),
 });

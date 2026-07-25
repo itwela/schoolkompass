@@ -5,17 +5,26 @@ import * as Haptics from 'expo-haptics';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 type GoBackProps = {
-  route: string;
-  onBeforeNavigate?: () => void;
+  route?: string;
+  onBeforeNavigate?: () => boolean | void;
 };
 
 export default function GoBack({ route, onBeforeNavigate }: GoBackProps) {
   const handlePress = async () => {
     if (onBeforeNavigate) {
-      onBeforeNavigate();
+      const shouldContinue = onBeforeNavigate();
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (shouldContinue === false) {
+        return;
+      }
     }
-    router.push(route as any);
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (route) {
+      router.push(route as any);
+    }
   };
 
   return (

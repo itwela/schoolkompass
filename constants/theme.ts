@@ -1,19 +1,19 @@
 export const theme = {
   colors: {
-    pearlWhite: '#F5F5F5',
-    darkGray: '#333333',
-    pastelGreen: '#98D8B1',
-    pastelOrange: '#FFB59E',
+    pearlWhite: '#FFFFFF',
+    darkGray: '#0B1220',
+    pastelGreen: '#1E6BFF',
+    pastelOrange: '#8AA1C1',
     background: {
-      light: '#F5F5F5',
-      dark: '#333333'
+      light: '#FFFFFF',
+      dark: '#0B1220'
     },
     text: {
-      light: '#333333',
-      dark: '#F5F5F5'
+      light: '#0B1F3B',
+      dark: '#EAF1FF'
     },
-    primary: '#98D8B1',
-    secondary: '#FFB59E'
+    primary: '#1E6BFF',
+    secondary: '#8AA1C1'
   },
   spacing: {
     xs: 4,

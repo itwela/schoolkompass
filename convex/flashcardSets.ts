@@ -46,6 +46,13 @@ export const update = mutation({
   },
 });
 
+export const rename = mutation({
+  args: { id: v.id("flashcardSets"), title: v.string() },
+  handler: async (ctx, { id, title }) => {
+    await ctx.db.patch(id, { title });
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("flashcardSets") },
   handler: async (ctx, { id }) => {

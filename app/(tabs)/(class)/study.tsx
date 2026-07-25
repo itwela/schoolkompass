@@ -19,7 +19,7 @@ import { Colors } from '@/constants/Colors';
 import SkeletonCard from '@/components/SkeletonCard';
 import { useClass } from '@/contexts/ClassContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useStudyGuidesLocal, useFlashcardSetsLocal } from '@/hooks/useDataFetch';
+import { useStudyGuidesLocal, useFlashcardSetsLocal, useQuizzesLocal } from '@/hooks/useDataFetch';
 import { openRouterChat } from '@/constants/clients/openrouterClient';
 
 type Tab = 'guides' | 'flashcards' | 'quiz';
@@ -48,11 +48,13 @@ function FlipCard({
   accentColor,
   onToggleStar,
   onHide,
+  onEdit,
 }: {
   card: Flashcard;
   accentColor: string;
   onToggleStar: () => void;
   onHide: () => void;
+  onEdit: () => void;
 }) {
   const { theme } = useTheme();
   const C = Colors[theme];
@@ -79,7 +81,6 @@ function FlipCard({
 
   return (
     <View style={styles.flipCardContainer}>
-      {/* Flip gesture covers the whole card */}
       <Pressable onPress={flip} style={StyleSheet.absoluteFill}>
         {/* Front */}
         <Animated.View
@@ -122,9 +123,14 @@ function FlipCard({
 
       {/* Actions rendered once, outside the flip pressable */}
       <View style={styles.flipCardActions}>
-        <Pressable onPress={onHide} hitSlop={12}>
-          <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✕</Text>
-        </Pressable>
+        <View style={styles.flipCardTopActions}>
+          <Pressable onPress={onEdit} hitSlop={12}>
+            <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✎</Text>
+          </Pressable>
+          <Pressable onPress={onHide} hitSlop={12}>
+            <Text style={[styles.flipCardActionIcon, { color: C.textMuted }]}>✕</Text>
+          </Pressable>
+        </View>
         <Pressable onPress={onToggleStar} hitSlop={12}>
           <Text style={[styles.flipCardActionIcon, { color: card.starred ? accentColor : C.textMuted }]}>
             {card.starred ? '★' : '☆'}
@@ -145,13 +151,17 @@ export default function StudyScreen() {
     currentClassName,
     setCurrentStudyGuide,
     setSelectedClassId,
+    setSavedQuizToLoad,
   } = useClass();
 
   const classId = selectedClassId ?? '';
   const accentColor = C.accentGreen;
 
-  const { studyGuides, loading: guidesLoading, addStudyGuide } = useStudyGuidesLocal(classId);
-  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet, deleteFlashcardSet } = useFlashcardSetsLocal(classId);
+  const { studyGuides, loading: guidesLoading, addStudyGuide, renameStudyGuide } = useStudyGuidesLocal(classId);
+  const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet, deleteFlashcardSet, renameFlashcardSet } = useFlashcardSetsLocal(classId);
+  const { quizzes, loading: quizzesLoading, deleteQuiz, renameQuiz } = useQuizzesLocal(classId);
+
+  // ── Star / hide cards ──────────────────────────────────────────────────────
 
   const toggleStar = async (setId: string, cardId: string) => {
     const set = flashcardSets.find((s) => s.id === setId);
@@ -162,9 +172,12 @@ export default function StudyScreen() {
     });
   };
 
+  // ── Confirm sheet (destructive actions) ────────────────────────────────────
+
   type ConfirmAction =
     | { type: 'hide-card'; setId: string; cardId: string }
-    | { type: 'delete-set'; setId: string; title: string };
+    | { type: 'delete-set'; setId: string; title: string }
+    | { type: 'delete-quiz'; quizId: string; title: string };
 
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const confirmSlideAnim = useRef(new Animated.Value(0)).current;
@@ -194,14 +207,112 @@ export default function StudyScreen() {
       }
     } else if (confirmAction.type === 'delete-set') {
       await deleteFlashcardSet(confirmAction.setId);
+    } else if (confirmAction.type === 'delete-quiz') {
+      await deleteQuiz(confirmAction.quizId);
     }
     hideConfirm();
   };
 
   const hideCard = (setId: string, cardId: string) => showConfirm({ type: 'hide-card', setId, cardId });
 
+  // ── Rename sheet ───────────────────────────────────────────────────────────
+
+  type RenameTarget =
+    | { type: 'guide'; id: string; currentTitle: string }
+    | { type: 'flashcard-set'; id: string; currentTitle: string }
+    | { type: 'quiz'; id: string; currentTitle: string };
+
+  const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
+  const renameSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const showRename = (target: RenameTarget) => {
+    setRenameTarget(target);
+    setRenameTitle(target.currentTitle);
+    renameSlideAnim.stopAnimation();
+    Animated.spring(renameSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const hideRename = () => {
+    renameSlideAnim.stopAnimation();
+    Animated.spring(renameSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setRenameTarget(null);
+      setRenameTitle('');
+    });
+  };
+
+  const handleRename = async () => {
+    if (!renameTarget || !renameTitle.trim() || renameSubmitting) return;
+    setRenameSubmitting(true);
+    try {
+      if (renameTarget.type === 'guide') {
+        await renameStudyGuide(renameTarget.id, renameTitle.trim());
+      } else if (renameTarget.type === 'flashcard-set') {
+        await renameFlashcardSet(renameTarget.id, renameTitle.trim());
+      } else {
+        await renameQuiz(renameTarget.id, renameTitle.trim());
+      }
+      hideRename();
+    } finally {
+      setRenameSubmitting(false);
+    }
+  };
+
+  // ── Edit card ──────────────────────────────────────────────────────────────
+
+  type EditTarget = { setId: string; cardId: string; question: string; answer: string };
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  const [editQuestion, setEditQuestion] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const editSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const showEdit = (target: EditTarget) => {
+    setEditTarget(target);
+    setEditQuestion(target.question);
+    setEditAnswer(target.answer);
+    editSlideAnim.stopAnimation();
+    Animated.spring(editSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const hideEdit = () => {
+    editSlideAnim.stopAnimation();
+    Animated.spring(editSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setEditTarget(null);
+      setEditQuestion('');
+      setEditAnswer('');
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editTarget || !editQuestion.trim() || !editAnswer.trim() || editSubmitting) return;
+    setEditSubmitting(true);
+    try {
+      const set = flashcardSets.find((s) => s.id === editTarget.setId);
+      if (!set) return;
+      await updateFlashcardSet({
+        ...set,
+        cards: set.cards.map((c) =>
+          c.id === editTarget.cardId
+            ? { ...c, question: editQuestion.trim(), answers: [editAnswer.trim()] }
+            : c
+        ),
+        lastModified: new Date().toISOString(),
+      });
+      hideEdit();
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
   const [activeTab, setActiveTab] = useState<Tab>('guides');
   const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(new Set());
+
+  // ── Flashcard generation ───────────────────────────────────────────────────
+
   const [addFlashcardsVisible, setAddFlashcardsVisible] = useState(false);
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [flashcardError, setFlashcardError] = useState<string | null>(null);
@@ -209,6 +320,77 @@ export default function StudyScreen() {
   const [flashcardSourceText, setFlashcardSourceText] = useState('');
   const [flashcardSetTitle, setFlashcardSetTitle] = useState('');
   const flashcardSlideAnim = useRef(new Animated.Value(0)).current;
+
+  const showAddFlashcards = () => {
+    flashcardSlideAnim.stopAnimation();
+    setFlashcardError(null);
+    setGenerateLog([]);
+    setAddFlashcardsVisible(true);
+    Animated.spring(flashcardSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const hideAddFlashcards = () => {
+    flashcardSlideAnim.stopAnimation();
+    Animated.spring(flashcardSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
+      setAddFlashcardsVisible(false);
+      setFlashcardError(null);
+      setFlashcardSourceText('');
+      setFlashcardSetTitle('');
+    });
+  };
+
+  const generateFlashcards = async () => {
+    if (generatingFlashcards || !flashcardSourceText.trim()) return;
+    setGeneratingFlashcards(true);
+    setFlashcardError(null);
+    setGenerateLog(['Calling AI...']);
+    try {
+      const raw = await openRouterChat({
+        model: 'google/gemini-2.0-flash-lite-001',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a flashcard generator. Return exactly 15 flashcards as a raw JSON array. No markdown, no explanation — only the JSON array.\n\nIMPORTANT RULES:\n- Each card tests ONE concept with ONE clear answer. Never write "Select 2" or "which TWO" style questions.\n- If a concept has multiple parts (e.g. "Name 3 types of X"), combine them into a single answer string like "Type A, Type B, Type C".\n- answers is always an array with exactly one string.\n\nFormat: [{"question": "...", "answers": ["the full answer here"], "explanation": "Brief explanation."}]',
+          },
+          {
+            role: 'user',
+            content: `Generate 15 flashcards from this material:\n\n${flashcardSourceText.trim()}`,
+          },
+        ],
+        temperature: 0.3,
+        maxTokens: 4000,
+      });
+      setGenerateLog((l) => [...l, `Got response (${raw.length} chars)`, 'Parsing JSON...']);
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('Could not parse flashcards from response');
+      const parsed = JSON.parse(match[0]);
+      setGenerateLog((l) => [...l, `Parsed ${parsed.length} cards`, 'Saving to Convex...']);
+      await addFlashcardSet({
+        id: Date.now().toString(),
+        title: flashcardSetTitle.trim() || 'Flashcard Set',
+        sourceText: flashcardSourceText.trim(),
+        cards: parsed.map((c: any, i: number) => ({
+          id: `${Date.now()}-${i}`,
+          question: c.question,
+          answers: Array.isArray(c.answers) ? c.answers : [c.answers],
+          explanation: c.explanation ?? '',
+          starred: false,
+          hidden: false,
+        })),
+        lastModified: new Date().toISOString(),
+      });
+      hideAddFlashcards();
+    } catch (e: any) {
+      setFlashcardError(e?.message ?? 'Something went wrong. Try again.');
+      setGeneratingFlashcards(false);
+    } finally {
+      setGeneratingFlashcards(false);
+    }
+  };
+
+  // ── Add guide ──────────────────────────────────────────────────────────────
+
   const [addGuideVisible, setAddGuideVisible] = useState(false);
   const [newGuideTitle, setNewGuideTitle] = useState('');
   const [newGuideContent, setNewGuideContent] = useState('');
@@ -247,73 +429,7 @@ export default function StudyScreen() {
     }
   };
 
-  const showAddFlashcards = () => {
-    flashcardSlideAnim.stopAnimation();
-    setFlashcardError(null);
-    setGenerateLog([]);
-    setAddFlashcardsVisible(true);
-    Animated.spring(flashcardSlideAnim, { toValue: 1, tension: 65, friction: 11, useNativeDriver: true }).start();
-  };
-
-  const hideAddFlashcards = () => {
-    flashcardSlideAnim.stopAnimation();
-    Animated.spring(flashcardSlideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start(() => {
-      setAddFlashcardsVisible(false);
-      setFlashcardError(null);
-      setFlashcardSourceText('');
-      setFlashcardSetTitle('');
-    });
-  };
-
-  const generateFlashcards = async () => {
-    if (generatingFlashcards || !flashcardSourceText.trim()) return;
-    setGeneratingFlashcards(true);
-    setFlashcardError(null);
-    setGenerateLog(['Calling AI...']);
-    try {
-      const raw = await openRouterChat({
-        model: 'google/gemini-2.0-flash-lite-001',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a flashcard generator. Given study material, return exactly 15 flashcards as a raw JSON array. No markdown, no explanation — only the JSON array. Format: [{"question": "...", "answers": ["correct answer here"], "explanation": "Brief explanation."}]',
-          },
-          {
-            role: 'user',
-            content: `Generate 15 flashcards from this material:\n\n${flashcardSourceText.trim()}`,
-          },
-        ],
-        temperature: 0.3,
-        maxTokens: 4000,
-      });
-      setGenerateLog((l) => [...l, `Got response (${raw.length} chars)`, 'Parsing JSON...']);
-      const match = raw.match(/\[[\s\S]*\]/);
-      if (!match) throw new Error('Could not parse flashcards from response');
-      const parsed = JSON.parse(match[0]);
-      setGenerateLog((l) => [...l, `Parsed ${parsed.length} cards`, 'Saving to Convex...']);
-      await addFlashcardSet({
-        id: Date.now().toString(),
-        title: flashcardSetTitle.trim() || 'Flashcard Set',
-        sourceText: flashcardSourceText.trim(),
-        cards: parsed.map((c: any, i: number) => ({
-          id: `${Date.now()}-${i}`,
-          question: c.question,
-          answers: Array.isArray(c.answers) ? c.answers : [c.answers],
-          explanation: c.explanation ?? '',
-          starred: false,
-          hidden: false,
-        })),
-        lastModified: new Date().toISOString(),
-      });
-      hideAddFlashcards();
-    } catch (e: any) {
-      setFlashcardError(e?.message ?? 'Something went wrong. Try again.');
-      setGeneratingFlashcards(false);
-    } finally {
-      setGeneratingFlashcards(false);
-    }
-  };
+  // ── Navigation ─────────────────────────────────────────────────────────────
 
   const handleBack = () => {
     if (activeTab !== 'guides') {
@@ -329,10 +445,36 @@ export default function StudyScreen() {
     router.push('/(tabs)/(class)/reader');
   };
 
-  const startQuiz = (guide: any) => {
+  // ── Quiz ───────────────────────────────────────────────────────────────────
+
+  const [newQuizSource, setNewQuizSource] = useState<'guide' | 'text'>('guide');
+  const [quizText, setQuizText] = useState('');
+
+  const startQuizFromGuide = (guide: any) => {
+    setSavedQuizToLoad(null);
     setCurrentStudyGuide(guide);
     router.push('/(tabs)/(class)/quiz-screen');
   };
+
+  const startQuizFromText = () => {
+    if (!quizText.trim()) return;
+    setSavedQuizToLoad(null);
+    setCurrentStudyGuide({
+      id: `text-${Date.now()}`,
+      title: 'Custom Quiz',
+      text: quizText.trim(),
+      audioFile: null,
+      lastModified: new Date().toISOString(),
+    });
+    router.push('/(tabs)/(class)/quiz-screen');
+  };
+
+  const openSavedQuiz = (quiz: { id: string; title: string; questions: any[] }) => {
+    setSavedQuizToLoad({ id: quiz.id, title: quiz.title, questions: quiz.questions });
+    router.push('/(tabs)/(class)/quiz-screen');
+  };
+
+  // ── Shared sheet style ─────────────────────────────────────────────────────
 
   const sheetStyle = {
     transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }],
@@ -341,6 +483,14 @@ export default function StudyScreen() {
   const estimateReadTime = (text: string) => {
     const words = text.trim().split(/\s+/).length;
     return Math.max(1, Math.round(words / 200));
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
   };
 
   return (
@@ -411,7 +561,15 @@ export default function StudyScreen() {
                           {estimateReadTime(guide.text)} min read
                         </Text>
                       </View>
-                      <Text style={[styles.guideArrow, { color: accentColor }]}>›</Text>
+                      <View style={styles.guideActions}>
+                        <Pressable
+                          onPress={() => showRename({ type: 'guide', id: guide.id, currentTitle: guide.title })}
+                          hitSlop={10}
+                        >
+                          <Text style={[styles.guideActionIcon, { color: C.textMuted }]}>✎</Text>
+                        </Pressable>
+                        <Text style={[styles.guideArrow, { color: accentColor }]}>›</Text>
+                      </View>
                     </Pressable>
                   ))}
                   <Pressable onPress={showAddGuide} style={[styles.addRowBtn, { borderColor: C.border }]}>
@@ -461,6 +619,12 @@ export default function StudyScreen() {
                             </Text>
                           </View>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                            <Pressable
+                              onPress={() => showRename({ type: 'flashcard-set', id: set.id, currentTitle: set.title || 'Flashcard Set' })}
+                              hitSlop={10}
+                            >
+                              <Text style={[styles.guideActionIcon, { color: C.textMuted }]}>✎</Text>
+                            </Pressable>
                             <Text style={[styles.setTitleChevron, { color: isExpanded ? accentColor : C.textMuted }]}>
                               {isExpanded ? '˄' : '˅'}
                             </Text>
@@ -479,6 +643,7 @@ export default function StudyScreen() {
                             accentColor={accentColor}
                             onToggleStar={() => toggleStar(set.id, card.id)}
                             onHide={() => hideCard(set.id, card.id)}
+                            onEdit={() => showEdit({ setId: set.id, cardId: card.id, question: card.question, answer: card.answers[0] ?? '' })}
                           />
                         ))}
                       </View>
@@ -495,23 +660,88 @@ export default function StudyScreen() {
           {/* ── Quiz Tab ── */}
           {activeTab === 'quiz' && (
             <View>
-              {guidesLoading ? (
-                <SkeletonCard height={72} />
-              ) : studyGuides.length === 0 ? (
-                <View style={[styles.emptyCard, { borderColor: accentColor }]}>
-                  <Text style={[styles.emptyLabel, { color: C.text, fontFamily: 'SpaceMono' }]}>
-                    ADD A GUIDE FIRST
+
+              {/* Saved quizzes */}
+              <Text style={[styles.quizSectionLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>SAVED QUIZZES</Text>
+              {quizzesLoading ? (
+                <SkeletonCard height={60} />
+              ) : quizzes.length === 0 ? (
+                <View style={[styles.quizEmptyRow, { borderColor: C.border }]}>
+                  <Text style={[styles.quizEmptyText, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                    NO SAVED QUIZZES YET
                   </Text>
                 </View>
               ) : (
-                <>
-                  <Text style={[styles.quizHint, { color: C.textMuted }]}>
-                    Pick a guide to generate a 10-question quiz.
-                  </Text>
-                  {studyGuides.map((guide) => (
+                quizzes.map((quiz) => (
+                  <View key={quiz.id} style={[styles.savedQuizCard, { backgroundColor: C.surface, borderColor: C.border }]}>
+                    <Pressable style={styles.savedQuizMain} onPress={() => openSavedQuiz(quiz)}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.guideTitle, { color: C.text }]} numberOfLines={1}>{quiz.title}</Text>
+                        <Text style={[styles.guideMeta, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+                          {quiz.questions.length} QUESTIONS · {formatDate(quiz.lastModified)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.guideArrow, { color: accentColor }]}>›</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => showRename({ type: 'quiz', id: quiz.id, currentTitle: quiz.title })}
+                      hitSlop={10}
+                      style={styles.savedQuizAction}
+                    >
+                      <Text style={[styles.guideActionIcon, { color: C.textMuted }]}>✎</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => showConfirm({ type: 'delete-quiz', quizId: quiz.id, title: quiz.title })}
+                      hitSlop={10}
+                      style={styles.savedQuizAction}
+                    >
+                      <Text style={{ color: '#e05c5c', fontSize: 13 }}>✕</Text>
+                    </Pressable>
+                  </View>
+                ))
+              )}
+
+              {/* New quiz section */}
+              <Text style={[styles.quizSectionLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 24 }]}>NEW QUIZ</Text>
+
+              {/* Source toggle */}
+              <View style={[styles.quizSourceRow, { backgroundColor: C.surface, borderColor: C.border }]}>
+                {(['guide', 'text'] as const).map((src) => (
+                  <Pressable
+                    key={src}
+                    onPress={() => setNewQuizSource(src)}
+                    style={[
+                      styles.quizSourceBtn,
+                      newQuizSource === src && { backgroundColor: accentColor },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.quizSourceBtnText,
+                        { color: newQuizSource === src ? C.buttonText : C.textMuted, fontFamily: 'SpaceMono' },
+                      ]}
+                    >
+                      {src === 'guide' ? 'FROM GUIDE' : 'FROM TEXT'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Guide picker */}
+              {newQuizSource === 'guide' && (
+                guidesLoading ? (
+                  <SkeletonCard height={72} />
+                ) : studyGuides.length === 0 ? (
+                  <View style={[styles.emptyCard, { borderColor: accentColor }]}>
+                    <Text style={[styles.emptyLabel, { color: C.text, fontFamily: 'SpaceMono' }]}>
+                      ADD A GUIDE FIRST
+                    </Text>
+                  </View>
+                ) : (
+                  studyGuides.map((guide) => (
                     <Pressable
                       key={guide.id}
-                      onPress={() => startQuiz(guide)}
+                      onPress={() => startQuizFromGuide(guide)}
                       style={[styles.guideCard, { backgroundColor: C.surface, borderColor: accentColor + '40' }]}
                     >
                       <View style={styles.guideCardInner}>
@@ -524,9 +754,31 @@ export default function StudyScreen() {
                       </View>
                       <Text style={[styles.guideArrow, { color: accentColor }]}>›</Text>
                     </Pressable>
-                  ))}
-                </>
+                  ))
+                )
               )}
+
+              {/* Text input */}
+              {newQuizSource === 'text' && (
+                <View>
+                  <TextInput
+                    style={[styles.quizTextInput, { backgroundColor: C.surface, color: C.text, borderColor: C.border }]}
+                    value={quizText}
+                    onChangeText={setQuizText}
+                    placeholder="Paste or type study material here..."
+                    placeholderTextColor={C.textMuted}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                  <Pressable
+                    onPress={startQuizFromText}
+                    style={[styles.submitBtn, { backgroundColor: accentColor, opacity: quizText.trim() ? 1 : 0.4 }]}
+                  >
+                    <Text style={[styles.submitBtnText, { color: C.buttonText }]}>Generate 10-Question Quiz</Text>
+                  </Pressable>
+                </View>
+              )}
+
             </View>
           )}
 
@@ -575,6 +827,47 @@ export default function StudyScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Rename Modal */}
+      <Modal transparent visible={!!renameTarget} animationType="none" onRequestClose={hideRename}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.overlay} onPress={hideRename}>
+            <Animated.View
+              style={[
+                styles.sheet,
+                { backgroundColor: C.surface },
+                { transform: [{ translateY: renameSlideAnim.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }) }] },
+              ]}
+            >
+              <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: C.text }]}>
+                  Rename {renameTarget?.type === 'guide' ? 'Guide' : renameTarget?.type === 'quiz' ? 'Quiz' : 'Flashcard Set'}
+                </Text>
+                <Pressable onPress={hideRename}>
+                  <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+                </Pressable>
+              </View>
+              <View style={styles.sheetBody}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                  value={renameTitle}
+                  onChangeText={setRenameTitle}
+                  autoFocus
+                  selectTextOnFocus
+                />
+                <Pressable
+                  onPress={handleRename}
+                  style={[styles.submitBtn, { backgroundColor: accentColor, opacity: renameTitle.trim() ? 1 : 0.4 }]}
+                >
+                  <Text style={[styles.submitBtnText, { color: C.buttonText }]}>
+                    {renameSubmitting ? 'Saving...' : 'Save'}
+                  </Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Destructive Action Confirm Sheet */}
       <Modal transparent visible={!!confirmAction} animationType="none" onRequestClose={hideConfirm}>
         <Pressable style={styles.overlay} onPress={hideConfirm}>
@@ -587,7 +880,9 @@ export default function StudyScreen() {
           >
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: C.text }]}>
-                {confirmAction?.type === 'delete-set' ? 'Delete Set' : 'Hide Card'}
+                {confirmAction?.type === 'delete-set' ? 'Delete Set'
+                  : confirmAction?.type === 'delete-quiz' ? 'Delete Quiz'
+                  : 'Hide Card'}
               </Text>
               <Pressable onPress={hideConfirm}>
                 <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
@@ -597,11 +892,15 @@ export default function StudyScreen() {
               <Text style={[{ color: C.textMuted, fontSize: 14, lineHeight: 20, marginBottom: 20 }]}>
                 {confirmAction?.type === 'delete-set'
                   ? `Delete "${confirmAction.title}"? All ${flashcardSets.find(s => s.id === confirmAction.setId)?.cards.length ?? 0} cards will be permanently removed.`
+                  : confirmAction?.type === 'delete-quiz'
+                  ? `Delete "${confirmAction.title}"? You'll need to regenerate it to take it again.`
                   : 'Hide this card? It won\'t show up in your deck anymore.'}
               </Text>
               <Pressable onPress={handleConfirm} style={[styles.submitBtn, { backgroundColor: '#e05c5c' }]}>
                 <Text style={[styles.submitBtnText, { color: '#fff' }]}>
-                  {confirmAction?.type === 'delete-set' ? 'Yes, Delete Set' : 'Yes, Hide Card'}
+                  {confirmAction?.type === 'delete-set' ? 'Yes, Delete Set'
+                    : confirmAction?.type === 'delete-quiz' ? 'Yes, Delete Quiz'
+                    : 'Yes, Hide Card'}
                 </Text>
               </Pressable>
               <Pressable onPress={hideConfirm} style={[styles.submitBtn, { backgroundColor: C.border, marginTop: 8 }]}>
@@ -610,6 +909,53 @@ export default function StudyScreen() {
             </View>
           </Animated.View>
         </Pressable>
+      </Modal>
+
+      {/* Edit Flashcard Modal */}
+      <Modal transparent visible={!!editTarget} animationType="none" onRequestClose={hideEdit}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.overlay} onPress={hideEdit}>
+            <Animated.View
+              style={[
+                styles.sheet,
+                { backgroundColor: C.surface },
+                { transform: [{ translateY: editSlideAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }] },
+              ]}
+            >
+              <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: C.text }]}>Edit Card</Text>
+                <Pressable onPress={hideEdit}>
+                  <Text style={[styles.sheetClose, { color: C.textMuted }]}>×</Text>
+                </Pressable>
+              </View>
+              <ScrollView style={styles.sheetBody} keyboardShouldPersistTaps="handled">
+                <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>QUESTION</Text>
+                <TextInput
+                  style={[styles.input, styles.textAreaSmall, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                  value={editQuestion}
+                  onChangeText={setEditQuestion}
+                  multiline
+                  autoFocus
+                />
+                <Text style={[styles.inputLabel, { color: C.textMuted, fontFamily: 'SpaceMono', marginTop: 14 }]}>ANSWER</Text>
+                <TextInput
+                  style={[styles.input, styles.textAreaSmall, { backgroundColor: C.bg, color: C.text, borderColor: C.border }]}
+                  value={editAnswer}
+                  onChangeText={setEditAnswer}
+                  multiline
+                />
+                <Pressable
+                  onPress={handleEditSave}
+                  style={[styles.submitBtn, { backgroundColor: accentColor, opacity: editQuestion.trim() && editAnswer.trim() ? 1 : 0.4 }]}
+                >
+                  <Text style={[styles.submitBtnText, { color: C.buttonText }]}>
+                    {editSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            </Animated.View>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Generate Flashcards Modal */}
@@ -707,12 +1053,25 @@ const styles = StyleSheet.create({
   guideTitle: { fontSize: 14, fontWeight: '500' },
   guideMeta: { fontSize: 9, letterSpacing: 0.5 },
   guideArrow: { fontSize: 20, lineHeight: 24 },
+  guideActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  guideActionIcon: { fontSize: 16 },
   addRowBtn: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 4 },
   addRowBtnText: { fontSize: 13 },
   emptyCard: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, height: 90, alignItems: 'center', justifyContent: 'center', gap: 4 },
   emptyPlus: { fontSize: 22 },
   emptyLabel: { fontSize: 10, letterSpacing: 1 },
-  quizHint: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
+  // Quiz tab
+  quizSectionLabel: { fontSize: 9, letterSpacing: 1.5, marginBottom: 10 },
+  quizEmptyRow: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 4 },
+  quizEmptyText: { fontSize: 9, letterSpacing: 1 },
+  savedQuizCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, marginBottom: 10, overflow: 'hidden' },
+  savedQuizMain: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: 14 },
+  savedQuizAction: { padding: 14 },
+  quizSourceRow: { flexDirection: 'row', borderWidth: 1, borderRadius: 10, overflow: 'hidden', marginBottom: 14 },
+  quizSourceBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 9 },
+  quizSourceBtnText: { fontSize: 9, letterSpacing: 1 },
+  quizTextInput: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 15, height: 140, marginBottom: 4 },
+  // Flashcards
   flashcardSetBlock: { marginBottom: 12 },
   setTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 10 },
   setTitleText: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
@@ -736,7 +1095,8 @@ const styles = StyleSheet.create({
   flipCardHint: { fontSize: 9, letterSpacing: 1, marginBottom: 10 },
   flipCardText: { fontSize: 16, lineHeight: 24, flex: 1 },
   flipCardExplanation: { fontSize: 12, marginTop: 10, lineHeight: 18 },
-  flipCardActions: { position: 'absolute', top: 14, bottom: 14, right: 16, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center' },
+  flipCardActions: { position: 'absolute', top: 14, bottom: 14, right: 16, flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end' },
+  flipCardTopActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   flipCardActionIcon: { fontSize: 18 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, maxHeight: '85%' },
@@ -747,6 +1107,7 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 9, letterSpacing: 1, marginBottom: 6 },
   input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 15 },
   textArea: { height: 130, textAlignVertical: 'top' },
+  textAreaSmall: { height: 80, textAlignVertical: 'top' },
   submitBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16, marginBottom: 8 },
   submitBtnText: { fontSize: 16, fontWeight: '600' },
 });

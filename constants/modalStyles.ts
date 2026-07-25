@@ -65,7 +65,7 @@ export const modslStyles = StyleSheet.create({
     marginTop: 20,
   },
   submitButtonText: {
-    color: useThemeColor({}, 'background'),
+    color: useThemeColor({}, 'buttonText'),
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,6 +1,14 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+const quizQuestionSchema = v.object({
+  question: v.string(),
+  options: v.array(v.string()),
+  correctAnswers: v.array(v.string()),
+  type: v.union(v.literal('single'), v.literal('multi')),
+  selectCount: v.number(),
+});
+
 export const list = query({
   args: { classId: v.string() },
   handler: async (ctx, { classId }) => {
@@ -15,17 +23,18 @@ export const add = mutation({
   args: {
     classId: v.string(),
     title: v.string(),
-    quizContent: v.array(
-      v.object({
-        id: v.string(),
-        question: v.string(),
-        answer: v.string(),
-      })
-    ),
+    questions: v.array(quizQuestionSchema),
     lastModified: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("quizzes", args);
+  },
+});
+
+export const rename = mutation({
+  args: { id: v.id("quizzes"), title: v.string() },
+  handler: async (ctx, { id, title }) => {
+    await ctx.db.patch(id, { title });
   },
 });
 

@@ -148,12 +148,12 @@ export default function ReadListenScreen() {
     },
     activeSpeedButtonText: {
       fontSize: 12,
-      color:  useThemeColor({}, 'audioControlTextActive'),
+      color:  useThemeColor({}, 'buttonText'),
       fontWeight: '600',
     },
     speedButtonText: {
       fontSize: 12,
-      color:  useThemeColor({}, 'audioControlTextActive'),
+      color:  useThemeColor({}, 'buttonText'),
       fontWeight: '600',
     },
     volumeBar: {
@@ -176,7 +176,7 @@ export default function ReadListenScreen() {
     },
   })
 
-  const { currentStudyGuide, setCurrentStudyGuide, markedSegments, setMarkedSegments } = useClass();
+  const { currentStudyGuide, currentQuiz, setCurrentStudyGuide, markedSegments, setMarkedSegments } = useClass();
   const [studyGuideText, setStudyGuideText] = useState<string>('')
   const { isPlaying, position, duration, loadAudio, playPauseAudio, seekAudio, setSpeed } = useTrackPlayer();
 
@@ -416,9 +416,9 @@ export default function ReadListenScreen() {
     <SafeAreaView style={{ width: "100%", height: "100%", backgroundColor: useThemeColor({}, 'background') }}>
       <View style={{ flex: 1, padding: 16, }}>
         <View style={styles.header}>
-          <GoBack route="/study" onBeforeNavigate={goBack} />
+          <GoBack onBeforeNavigate={goBack} />
           <Text style={styles.content}>
-            {currentStudyGuide?.title || 'No Study Guide Selected'}
+            {currentStudyGuide?.title || currentQuiz?.title || 'No Item Selected'}
           </Text>
         </View>
 
