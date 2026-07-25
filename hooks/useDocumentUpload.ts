@@ -68,17 +68,17 @@ export const useDocumentUpload = () => {
     title?: string
   ): Promise<{ id: string } | null> => {
     setError(null);
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setError("Camera permission is required to take a photo");
-      return null;
-    }
-    const photoResult = await ImagePicker.launchCameraAsync({ quality: 0.9 });
-    if (photoResult.canceled || photoResult.assets.length === 0) return null;
-
-    setUploading(true);
-    setCurrentStep("Uploading photo...");
     try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setError("Camera permission is required to take a photo");
+        return null;
+      }
+      const photoResult = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+      if (photoResult.canceled || photoResult.assets.length === 0) return null;
+
+      setUploading(true);
+      setCurrentStep("Uploading photo...");
       const storageId = await uploadOne(photoResult.assets[0].uri, "image/jpeg");
       setCurrentStep("Reading document...");
       const result = await processDocuments({ classId, storageIds: [storageId], contentType, title });

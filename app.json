@@ -43,6 +43,13 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow School Kompass to use the camera to capture study documents.",
+          "photosPermission": "Allow School Kompass to access photos to import study documents."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
