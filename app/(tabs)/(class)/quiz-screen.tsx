@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useClass } from '@/contexts/ClassContext';
@@ -98,6 +100,7 @@ export default function QuizScreen() {
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef<number>(0);
+  const scoreRevealAnim = useRef(new Animated.Value(0)).current;
 
   const { attempts, bestScore, addAttempt } = useQuizAttemptsLocal(currentQuizId);
 
@@ -145,6 +148,14 @@ export default function QuizScreen() {
       timeSeconds: elapsed,
       takenAt: new Date().toISOString(),
     });
+  }, [quizState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Score-reveal animation
+  useEffect(() => {
+    if (quizState === 'score') {
+      scoreRevealAnim.setValue(0);
+      Animated.spring(scoreRevealAnim, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }).start();
+    }
   }, [quizState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentQuestion = questions[currentIndex];
@@ -232,7 +243,7 @@ export default function QuizScreen() {
       {/* Error */}
       {quizState === 'question' && error && (
         <View style={styles.centered}>
-          <Text style={[styles.errorText, { color: '#ff4444' }]}>{error}</Text>
+          <Text style={[styles.errorText, { color: C.error }]}>{error}</Text>
           <Pressable onPress={() => router.back()} style={[styles.btn, { backgroundColor: accentColor, marginTop: 20 }]}>
             <Text style={[styles.btnText, { color: C.buttonText }]}>Go Back</Text>
           </Pressable>
@@ -247,13 +258,8 @@ export default function QuizScreen() {
             <Text style={[styles.progressText, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
               {currentIndex + 1} / {questions.length}
             </Text>
-            <View style={[styles.progressBar, { backgroundColor: C.border }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: accentColor, width: `${((currentIndex + 1) / questions.length) * 100}%` },
-                ]}
-              />
+            <View style={styles.progressBarWrap}>
+              <ProgressBar progress={(currentIndex + 1) / questions.length} accentColor={accentColor} />
             </View>
           </View>
 
@@ -278,9 +284,9 @@ export default function QuizScreen() {
               const isCorrect = currentQuestion.correctAnswers.includes(option);
               const showCorrect = revealed && isCorrect;
               const showWrong = revealed && isSelected && !isCorrect;
-              const borderColor = showCorrect ? '#4caf50' : showWrong ? '#e05c5c' : isSelected ? accentColor : C.border;
-              const textColor = showCorrect ? '#4caf50' : showWrong ? '#e05c5c' : isSelected ? accentColor : C.text;
-              const bgColor = showCorrect ? '#4caf5018' : showWrong ? '#e05c5c18' : isSelected ? accentColor + '18' : C.surface;
+              const borderColor = showCorrect ? C.success : showWrong ? C.error : isSelected ? accentColor : C.border;
+              const textColor = showCorrect ? C.success : showWrong ? C.error : isSelected ? accentColor : C.text;
+              const bgColor = showCorrect ? `${C.success}18` : showWrong ? `${C.error}18` : isSelected ? accentColor + '18' : C.surface;
 
               return (
                 <Pressable
@@ -341,16 +347,23 @@ export default function QuizScreen() {
       {quizState === 'score' && (
         <ScrollView contentContainerStyle={styles.scoreContainer}>
           {/* Score */}
-          <Text style={[styles.scoreBig, { color: accentColor }]}>
-            {score} / {questions.length}
-          </Text>
-          <Text style={[styles.scoreLabel, { color: C.text, fontFamily: 'SpaceMono' }]}>
-            {score === questions.length
-              ? 'PERFECT ⚡'
-              : score >= questions.length * 0.7
-              ? 'NICE WORK'
-              : 'KEEP STUDYING'}
-          </Text>
+          <Animated.View
+            style={{
+              opacity: scoreRevealAnim,
+              transform: [{ scale: scoreRevealAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
+            }}
+          >
+            <Text style={[styles.scoreBig, { color: accentColor }]}>
+              {score} / {questions.length}
+            </Text>
+            <Text style={[styles.scoreLabel, { color: C.text, fontFamily: 'JetBrainsMono_400Regular' }]}>
+              {score === questions.length
+                ? 'PERFECT ⚡'
+                : score >= questions.length * 0.7
+                ? 'NICE WORK'
+                : 'KEEP STUDYING'}
+            </Text>
+          </Animated.View>
 
           {/* Stats row */}
           <View style={[styles.statsRow, { borderColor: C.border }]}>
@@ -360,7 +373,7 @@ export default function QuizScreen() {
             </View>
             <View style={[styles.statDivider, { backgroundColor: C.border }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: '#e05c5c' }]}>{questions.length - score}</Text>
+              <Text style={[styles.statValue, { color: C.error }]}>{questions.length - score}</Text>
               <Text style={[styles.statLabel, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>WRONG</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: C.border }]} />
@@ -422,8 +435,7 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   progressText: { fontSize: 10, letterSpacing: 0.5, minWidth: 40 },
-  progressBar: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2 },
+  progressBarWrap: { flex: 1 },
   multiHintRow: { borderWidth: 1, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 12, marginBottom: 14, alignSelf: 'flex-start' },
   multiHintText: { fontSize: 9, letterSpacing: 1 },
   questionText: { fontSize: 20, lineHeight: 30, fontWeight: '500', marginBottom: 24 },
