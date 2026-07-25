@@ -24,34 +24,16 @@ export default function ReaderScreen() {
   }
 
   const markdownStyles = {
-    body: { color: C.text, fontSize: 17, lineHeight: 28 },
-    heading1: { color: accentColor, fontSize: 22, fontWeight: '700' as const, marginTop: 24, marginBottom: 8 },
-    heading2: { color: accentColor, fontSize: 19, fontWeight: '600' as const, marginTop: 20, marginBottom: 6 },
-    heading3: { color: accentColor, fontSize: 16, fontWeight: '600' as const, marginTop: 16, marginBottom: 4 },
-    strong: { color: C.text, fontWeight: '700' as const },
+    body: { fontFamily: 'HankenGrotesk_400Regular', fontSize: 17, lineHeight: 28.9, color: C.text },
+    heading1: { fontFamily: 'InstrumentSerif_400Regular', fontSize: 28, color: accentColor, marginTop: 16, marginBottom: 8 },
+    heading2: { fontFamily: 'InstrumentSerif_400Regular', fontSize: 22, color: accentColor, marginTop: 14, marginBottom: 6 },
+    heading3: { fontFamily: 'InstrumentSerif_400Regular', fontSize: 19, color: accentColor, marginTop: 12, marginBottom: 4 },
+    code_inline: { fontFamily: 'JetBrainsMono_400Regular', backgroundColor: C.surface, color: accentColor, paddingHorizontal: 4, borderRadius: 3 },
+    code_block: { fontFamily: 'JetBrainsMono_400Regular', backgroundColor: C.surface, color: accentColor, padding: 12, borderRadius: 8 },
+    fence: { fontFamily: 'JetBrainsMono_400Regular', backgroundColor: C.surface, color: accentColor, padding: 12, borderRadius: 8 },
+    strong: { color: C.text, fontFamily: 'HankenGrotesk_600SemiBold' },
+    image: { borderRadius: 8, marginVertical: 8 },
     em: { color: C.text, fontStyle: 'italic' as const },
-    code_inline: {
-      backgroundColor: C.surface,
-      color: accentColor,
-      fontFamily: 'SpaceMono',
-      fontSize: 14,
-      paddingHorizontal: 4,
-      borderRadius: 3,
-    },
-    fence: {
-      backgroundColor: C.surface,
-      borderRadius: 8,
-      padding: 12,
-      marginVertical: 8,
-    },
-    code_block: {
-      backgroundColor: C.surface,
-      color: accentColor,
-      fontFamily: 'SpaceMono',
-      fontSize: 13,
-      padding: 12,
-      borderRadius: 8,
-    },
     blockquote: {
       borderLeftWidth: 3,
       borderLeftColor: accentColor,
