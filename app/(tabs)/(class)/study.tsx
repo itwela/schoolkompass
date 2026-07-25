@@ -20,6 +20,7 @@ import SkeletonCard from '@/components/SkeletonCard';
 import { useClass } from '@/contexts/ClassContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useStudyGuidesLocal, useFlashcardSetsLocal, useQuizzesLocal } from '@/hooks/useDataFetch';
+import { useWeakSpots } from '@/hooks/useWeakSpots';
 import { openRouterChat } from '@/constants/clients/openrouterClient';
 
 type Tab = 'guides' | 'flashcards' | 'quiz';
@@ -160,6 +161,7 @@ export default function StudyScreen() {
   const { studyGuides, loading: guidesLoading, addStudyGuide, renameStudyGuide } = useStudyGuidesLocal(classId);
   const { flashcardSets, loading: flashcardsLoading, updateFlashcardSet, addFlashcardSet, deleteFlashcardSet, renameFlashcardSet } = useFlashcardSetsLocal(classId);
   const { quizzes, loading: quizzesLoading, deleteQuiz, renameQuiz } = useQuizzesLocal(classId);
+  const { weakSpots } = useWeakSpots(classId);
 
   // ── Star / hide cards ──────────────────────────────────────────────────────
 
@@ -506,6 +508,26 @@ export default function StudyScreen() {
             {currentClassName ?? 'Class'}
           </Text>
         </View>
+
+        {/* Weak Spots */}
+        {weakSpots.length > 0 && (
+          <View style={[weakSpotStyles.container, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <Text style={[weakSpotStyles.heading, { color: C.textMuted, fontFamily: 'SpaceMono' }]}>
+              YOU KEEP MISSING
+            </Text>
+            {weakSpots.map((spot) => (
+              <View key={spot.quizId} style={weakSpotStyles.row}>
+                <Text style={[weakSpotStyles.title, { color: C.text }]} numberOfLines={1}>
+                  {spot.title}
+                </Text>
+                <Text style={[weakSpotStyles.detail, { color: C.textMuted }]}>
+                  {spot.latestWrongCount}/{spot.latestTotal} wrong last attempt
+                  {spot.trend === 'improving' ? ' ↑' : spot.trend === 'worsening' ? ' ↓' : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Tabs */}
         <View style={[styles.tabBar, { borderBottomColor: C.border }]}>
@@ -1110,4 +1132,12 @@ const styles = StyleSheet.create({
   textAreaSmall: { height: 80, textAlignVertical: 'top' },
   submitBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16, marginBottom: 8 },
   submitBtnText: { fontSize: 16, fontWeight: '600' },
+});
+
+const weakSpotStyles = StyleSheet.create({
+  container: { borderRadius: 12, borderWidth: 1, padding: 12, marginHorizontal: 20, marginBottom: 12, gap: 8 },
+  heading: { fontSize: 10, letterSpacing: 0.5 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 14, flex: 1, marginRight: 8 },
+  detail: { fontSize: 12 },
 });
