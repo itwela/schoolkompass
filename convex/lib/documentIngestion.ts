@@ -21,6 +21,7 @@ export function resolveDiagramCrop(
   pageWidth: number,
   pageHeight: number
 ): CropResult {
+  if (!Number.isFinite(pageWidth) || !Number.isFinite(pageHeight) || pageWidth <= 0 || pageHeight <= 0) return { crop: null };
   if (!box || !isValidBox(box)) return { crop: null };
 
   const boxWidth = box.xMax - box.xMin;

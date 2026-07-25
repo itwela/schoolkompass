@@ -42,4 +42,16 @@ describe("resolveDiagramCrop", () => {
     const result = resolveDiagramCrop(box, pageWidth, pageHeight);
     expect(result.crop).toBeNull();
   });
+
+  it("falls back to the whole page when page dimensions are negative", () => {
+    const box = { xMin: 100, yMin: 100, xMax: 300, yMax: 300 };
+    const result = resolveDiagramCrop(box, -1000, -1400);
+    expect(result.crop).toBeNull();
+  });
+
+  it("falls back to the whole page when page dimensions are NaN", () => {
+    const box = { xMin: 100, yMin: 100, xMax: 300, yMax: 300 };
+    const result = resolveDiagramCrop(box, NaN, 1400);
+    expect(result.crop).toBeNull();
+  });
 });
