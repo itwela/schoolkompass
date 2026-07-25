@@ -325,6 +325,7 @@ export const useFlashcardSetsLocal = (classId: string) => {
 export interface QuizAttempt {
   id: string;
   quizId: string;
+  classId: string;
   score: number;
   total: number;
   wrongCount: number;
@@ -345,6 +346,7 @@ export const useQuizAttemptsLocal = (quizId: string) => {
   const attempts: QuizAttempt[] = (rawAttempts ?? []).map((doc) => ({
     id: doc._id.toString(),
     quizId: doc.quizId,
+    classId: doc.classId,
     score: doc.score,
     total: doc.total,
     wrongCount: doc.wrongCount,

@@ -176,7 +176,7 @@ export default function ReadListenScreen() {
     },
   })
 
-  const { currentStudyGuide, currentQuiz, setCurrentStudyGuide, markedSegments, setMarkedSegments } = useClass();
+  const { currentStudyGuide, savedQuizToLoad, setCurrentStudyGuide, markedSegments, setMarkedSegments } = useClass();
   const [studyGuideText, setStudyGuideText] = useState<string>('')
   const { isPlaying, position, duration, loadAudio, playPauseAudio, seekAudio, setSpeed } = useTrackPlayer();
 
@@ -388,8 +388,8 @@ export default function ReadListenScreen() {
     }
   };
 
-  const goBack = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);     
+  const goBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCurrentStudyGuide(null)
   }
 
@@ -418,7 +418,7 @@ export default function ReadListenScreen() {
         <View style={styles.header}>
           <GoBack onBeforeNavigate={goBack} />
           <Text style={styles.content}>
-            {currentStudyGuide?.title || currentQuiz?.title || 'No Item Selected'}
+            {currentStudyGuide?.title || savedQuizToLoad?.title || 'No Item Selected'}
           </Text>
         </View>
 
