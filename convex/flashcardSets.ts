@@ -8,6 +8,7 @@ const cardSchema = v.object({
   explanation: v.string(),
   starred: v.boolean(),
   hidden: v.boolean(),
+  imageUrl: v.optional(v.string()),
 });
 
 export const list = query({

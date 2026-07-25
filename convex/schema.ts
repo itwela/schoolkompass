@@ -8,6 +8,7 @@ const cardSchema = v.object({
   explanation: v.string(),
   starred: v.boolean(),
   hidden: v.boolean(),
+  imageUrl: v.optional(v.string()),
 });
 
 const quizQuestionSchema = v.object({
@@ -16,6 +17,7 @@ const quizQuestionSchema = v.object({
   correctAnswers: v.array(v.string()),
   type: v.union(v.literal('single'), v.literal('multi')),
   selectCount: v.number(),
+  imageUrl: v.optional(v.string()),
 });
 
 export default defineSchema({

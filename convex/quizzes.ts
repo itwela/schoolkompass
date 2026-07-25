@@ -7,6 +7,7 @@ const quizQuestionSchema = v.object({
   correctAnswers: v.array(v.string()),
   type: v.union(v.literal('single'), v.literal('multi')),
   selectCount: v.number(),
+  imageUrl: v.optional(v.string()),
 });
 
 export const list = query({
