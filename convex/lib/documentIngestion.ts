@@ -44,3 +44,14 @@ export function resolveDiagramCrop(
     },
   };
 }
+
+export function extractJson<T>(raw: string, shape: "array" | "object"): T {
+  const pattern = shape === "array" ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+  const match = raw.match(pattern);
+  if (!match) {
+    throw new Error(
+      `Could not find a JSON ${shape} in the model response`
+    );
+  }
+  return JSON.parse(match[0]) as T;
+}

@@ -1,4 +1,4 @@
-import { resolveDiagramCrop } from "./documentIngestion";
+import { resolveDiagramCrop, extractJson } from "./documentIngestion";
 
 describe("resolveDiagramCrop", () => {
   const pageWidth = 1000;
@@ -53,5 +53,35 @@ describe("resolveDiagramCrop", () => {
     const box = { xMin: 100, yMin: 100, xMax: 300, yMax: 300 };
     const result = resolveDiagramCrop(box, NaN, 1400);
     expect(result.crop).toBeNull();
+  });
+});
+
+describe("extractJson", () => {
+  it("extracts a JSON array from surrounding prose", () => {
+    const raw = 'Here is the output:\n[{"question": "What is a PK?"}]\nDone.';
+    const result = extractJson<{ question: string }[]>(raw, "array");
+    expect(result).toEqual([{ question: "What is a PK?" }]);
+  });
+
+  it("extracts a JSON object from surrounding prose", () => {
+    const raw = 'Sure!\n{"title": "Chapter 1", "text": "Notes here"}\nEnjoy.';
+    const result = extractJson<{ title: string; text: string }>(raw, "object");
+    expect(result).toEqual({ title: "Chapter 1", text: "Notes here" });
+  });
+
+  it("throws a descriptive error when no array is found for shape=array", () => {
+    expect(() => extractJson("no json here", "array")).toThrow(
+      "Could not find a JSON array in the model response"
+    );
+  });
+
+  it("throws a descriptive error when no object is found for shape=object", () => {
+    expect(() => extractJson("no json here", "object")).toThrow(
+      "Could not find a JSON object in the model response"
+    );
+  });
+
+  it("throws when the matched text is not valid JSON", () => {
+    expect(() => extractJson("[not valid json]", "array")).toThrow();
   });
 });
