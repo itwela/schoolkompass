@@ -55,5 +55,7 @@ export default defineSchema({
     wrongCount: v.number(),
     timeSeconds: v.number(),
     takenAt: v.string(),
-  }).index("by_quizId", ["quizId"]),
+  })
+    .index("by_quizId", ["quizId"])
+    .index("by_classId", ["classId"]),
 });
