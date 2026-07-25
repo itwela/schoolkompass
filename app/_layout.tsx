@@ -7,6 +7,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
+import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from '@expo-google-fonts/hanken-grotesk';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 
 import { ClassProvider } from '@/contexts/ClassContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -19,6 +22,10 @@ function AppContent() {
   const { theme } = useTheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    InstrumentSerif_400Regular,
+    HankenGrotesk_400Regular,
+    HankenGrotesk_600SemiBold,
+    JetBrainsMono_400Regular,
   });
 
   useEffect(() => {
