@@ -174,7 +174,7 @@ export const processDocuments = action({
           const hasValidOptions =
             Array.isArray(q?.options) && q.options.length > 0 && q.options.every((o: unknown) => typeof o === "string");
           const hasValidCorrectAnswers =
-            Array.isArray(q?.correctAnswers) && q.correctAnswers.every((a: unknown) => typeof a === "string");
+            Array.isArray(q?.correctAnswers) && q.correctAnswers.length > 0 && q.correctAnswers.every((a: unknown) => typeof a === "string");
           if (!hasValidQuestion || !hasValidOptions || !hasValidCorrectAnswers) {
             console.error("Skipping quiz item with invalid shape", q);
             continue;
@@ -219,7 +219,7 @@ export const processDocuments = action({
         text = text.replace(/\[\[image:\d+\]\]/g, "");
         const docId = await ctx.runMutation(api.studyGuides.add, {
           classId,
-          title: title?.trim() || parsed.title || "Study Guide",
+          title: title?.trim() || (typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : "Study Guide"),
           text,
           audioFile: null,
           lastModified: now,
