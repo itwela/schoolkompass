@@ -145,11 +145,13 @@ export default function ReadListenScreen() {
       fontSize: 12,
       color:  useThemeColor({}, 'audioControlTextInactive'),
       fontWeight: '600',
+      fontFamily: 'JetBrainsMono_400Regular',
     },
     activeSpeedButtonText: {
       fontSize: 12,
       color:  useThemeColor({}, 'buttonText'),
       fontWeight: '600',
+      fontFamily: 'JetBrainsMono_400Regular',
     },
     speedButtonText: {
       fontSize: 12,
