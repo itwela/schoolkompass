@@ -27,3 +27,14 @@ export const listByQuiz = query({
       .collect();
   },
 });
+
+export const listByClass = query({
+  args: { classId: v.string() },
+  handler: async (ctx, { classId }) => {
+    if (!classId) return [];
+    return await ctx.db
+      .query("quizAttempts")
+      .withIndex("by_classId", (q) => q.eq("classId", classId))
+      .collect();
+  },
+});
