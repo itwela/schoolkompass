@@ -69,23 +69,28 @@ async function callVisionModel(pages: PageImage[], contentType: "guide" | "flash
 /** Crops (or falls back to whole page) and stores the diagram image, returning its public URL. */
 async function cropAndStoreUrl(ctx: any, pages: PageImage[], diagramRef: DiagramRef): Promise<string | undefined> {
   if (!diagramRef) return undefined;
-  const page = pages[diagramRef.pageIndex];
-  if (!page) return undefined;
+  try {
+    const page = pages[diagramRef.pageIndex];
+    if (!page) return undefined;
 
-  const { crop } = resolveDiagramCrop(diagramRef.box, page.width, page.height);
-  const image = await Jimp.read(Buffer.from(page.base64, "base64"));
-  if (crop) {
-    image.crop({
-      x: Math.round(crop.xMin),
-      y: Math.round(crop.yMin),
-      w: Math.round(crop.xMax - crop.xMin),
-      h: Math.round(crop.yMax - crop.yMin),
-    });
+    const { crop } = resolveDiagramCrop(diagramRef.box, page.width, page.height);
+    const image = await Jimp.read(Buffer.from(page.base64, "base64"));
+    if (crop) {
+      image.crop({
+        x: Math.round(crop.xMin),
+        y: Math.round(crop.yMin),
+        w: Math.round(crop.xMax - crop.xMin),
+        h: Math.round(crop.yMax - crop.yMin),
+      });
+    }
+    const outputBuffer = await image.getBuffer("image/png");
+    const storageId = await ctx.storage.store(new Blob([outputBuffer], { type: "image/png" }));
+    const url = await ctx.storage.getUrl(storageId);
+    return url ?? undefined;
+  } catch (err) {
+    console.error("cropAndStoreUrl failed for diagramRef", diagramRef, err);
+    return undefined;
   }
-  const outputBuffer = await image.getBuffer("image/png");
-  const storageId = await ctx.storage.store(new Blob([outputBuffer], { type: "image/png" }));
-  const url = await ctx.storage.getUrl(storageId);
-  return url ?? undefined;
 }
 
 export const processDocuments = action({
@@ -96,90 +101,120 @@ export const processDocuments = action({
     title: v.optional(v.string()),
   },
   handler: async (ctx, { classId, storageIds, contentType, title }) => {
-    const allPages: PageImage[] = [];
-    for (const storageId of storageIds) {
-      const blob = await ctx.storage.get(storageId);
-      if (!blob) throw new Error(`File ${storageId} not found in storage`);
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      const isPdf = blob.type === "application/pdf";
-      const pages = await renderPagesFromFile(buffer, isPdf);
-      allPages.push(...pages);
-    }
+    try {
+      const allPages: PageImage[] = [];
+      for (const storageId of storageIds) {
+        const blob = await ctx.storage.get(storageId);
+        if (!blob) throw new Error(`File ${storageId} not found in storage`);
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        const isPdf = blob.type === "application/pdf";
+        const pages = await renderPagesFromFile(buffer, isPdf);
+        allPages.push(...pages);
+      }
 
-    const raw = await callVisionModel(allPages, contentType);
-    const now = new Date().toISOString();
+      const raw = await callVisionModel(allPages, contentType);
+      const now = new Date().toISOString();
 
-    let id: string;
-    if (contentType === "flashcards") {
-      const parsed = extractJson<any[]>(raw, "array");
-      const cards = [];
-      for (let i = 0; i < parsed.length; i++) {
-        const c = parsed[i];
-        const imageUrl = await cropAndStoreUrl(ctx, allPages, c.diagramRef);
-        cards.push({
-          id: `${Date.now()}-${i}`,
-          question: c.question,
-          answers: Array.isArray(c.answers) ? c.answers : [c.answers],
-          explanation: c.explanation ?? "",
-          starred: false,
-          hidden: false,
-          imageUrl,
+      let id: string;
+      if (contentType === "flashcards") {
+        const parsed = extractJson<any[]>(raw, "array");
+        const cards = [];
+        for (let i = 0; i < parsed.length; i++) {
+          const c = parsed[i];
+          if (typeof c?.question !== "string" || c.question.trim() === "") {
+            console.error("Skipping flashcard item with invalid question", c);
+            continue;
+          }
+          const imageUrl = await cropAndStoreUrl(ctx, allPages, c.diagramRef);
+          cards.push({
+            id: `${Date.now()}-${i}`,
+            question: c.question,
+            answers: Array.isArray(c.answers) ? c.answers : [c.answers],
+            explanation: c.explanation ?? "",
+            starred: false,
+            hidden: false,
+            imageUrl,
+          });
+        }
+        if (cards.length === 0) {
+          throw new Error("Model response contained no valid flashcards after validation");
+        }
+        const docId = await ctx.runMutation(api.flashcardSets.add, {
+          classId,
+          title: title?.trim() || "Flashcard Set",
+          sourceText: "[Generated from uploaded document]",
+          cards,
+          lastModified: now,
         });
-      }
-      const docId = await ctx.runMutation(api.flashcardSets.add, {
-        classId,
-        title: title?.trim() || "Flashcard Set",
-        sourceText: "[Generated from uploaded document]",
-        cards,
-        lastModified: now,
-      });
-      id = docId.toString();
-    } else if (contentType === "quiz") {
-      const parsed = extractJson<any[]>(raw, "array");
-      const questions: {
-        question: string;
-        options: string[];
-        correctAnswers: string[];
-        type: "single" | "multi";
-        selectCount: number;
-        imageUrl: string | undefined;
-      }[] = [];
-      for (const q of parsed) {
-        const imageUrl = await cropAndStoreUrl(ctx, allPages, q.diagramRef);
-        questions.push({
-          question: q.question,
-          options: q.options,
-          correctAnswers: q.correctAnswers,
-          type: q.type === "multi" ? "multi" : "single",
-          selectCount: q.selectCount ?? 1,
-          imageUrl,
+        id = docId.toString();
+      } else if (contentType === "quiz") {
+        const parsed = extractJson<any[]>(raw, "array");
+        const questions: {
+          question: string;
+          options: string[];
+          correctAnswers: string[];
+          type: "single" | "multi";
+          selectCount: number;
+          imageUrl: string | undefined;
+        }[] = [];
+        for (const q of parsed) {
+          const hasValidQuestion = typeof q?.question === "string" && q.question.trim() !== "";
+          const hasValidOptions =
+            Array.isArray(q?.options) && q.options.length > 0 && q.options.every((o: unknown) => typeof o === "string");
+          const hasValidCorrectAnswers =
+            Array.isArray(q?.correctAnswers) && q.correctAnswers.every((a: unknown) => typeof a === "string");
+          if (!hasValidQuestion || !hasValidOptions || !hasValidCorrectAnswers) {
+            console.error("Skipping quiz item with invalid shape", q);
+            continue;
+          }
+          const imageUrl = await cropAndStoreUrl(ctx, allPages, q.diagramRef);
+          questions.push({
+            question: q.question,
+            options: q.options,
+            correctAnswers: q.correctAnswers,
+            type: q.type === "multi" ? "multi" : "single",
+            selectCount: q.selectCount ?? 1,
+            imageUrl,
+          });
+        }
+        if (questions.length === 0) {
+          throw new Error("Model response contained no valid quiz questions after validation");
+        }
+        const docId = await ctx.runMutation(api.quizzes.add, {
+          classId,
+          title: title?.trim() || "Quiz",
+          questions,
+          lastModified: now,
         });
+        id = docId.toString();
+      } else {
+        const parsed = extractJson<{ title: string; text: string; images: { index: number; diagramRef: DiagramRef }[] }>(raw, "object");
+        if (typeof parsed.text !== "string" || parsed.text.trim() === "") {
+          throw new Error("Model response missing guide text");
+        }
+        let text = parsed.text;
+        for (const img of parsed.images ?? []) {
+          const url = await cropAndStoreUrl(ctx, allPages, img.diagramRef);
+          text = text.replaceAll(`[[image:${img.index}]]`, url ? `![Diagram](${url})` : "");
+        }
+        text = text.replace(/\[\[image:\d+\]\]/g, "");
+        const docId = await ctx.runMutation(api.studyGuides.add, {
+          classId,
+          title: title?.trim() || parsed.title || "Study Guide",
+          text,
+          audioFile: null,
+          lastModified: now,
+        });
+        id = docId.toString();
       }
-      const docId = await ctx.runMutation(api.quizzes.add, {
-        classId,
-        title: title?.trim() || "Quiz",
-        questions,
-        lastModified: now,
-      });
-      id = docId.toString();
-    } else {
-      const parsed = extractJson<{ title: string; text: string; images: { index: number; diagramRef: DiagramRef }[] }>(raw, "object");
-      let text = parsed.text;
-      for (const img of parsed.images ?? []) {
-        const url = await cropAndStoreUrl(ctx, allPages, img.diagramRef);
-        text = text.replace(`[[image:${img.index}]]`, url ? `![Diagram](${url})` : "");
-      }
-      const docId = await ctx.runMutation(api.studyGuides.add, {
-        classId,
-        title: title?.trim() || parsed.title || "Study Guide",
-        text,
-        audioFile: null,
-        lastModified: now,
-      });
-      id = docId.toString();
-    }
 
-    await ctx.runMutation(internal.files.deleteFiles, { storageIds });
-    return { id };
+      return { id };
+    } finally {
+      try {
+        await ctx.runMutation(internal.files.deleteFiles, { storageIds });
+      } catch (err) {
+        console.error("Failed to delete uploaded files during cleanup", storageIds, err);
+      }
+    }
   },
 });
